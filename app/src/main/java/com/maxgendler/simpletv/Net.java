@@ -17,7 +17,7 @@ final class Net {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setConnectTimeout(15000);
         c.setReadTimeout(30000);
-        c.setRequestProperty("User-Agent", "SimpleTV (Android TV)");
+        c.setRequestProperty("User-Agent", "SimpleTV/2.0 (Android TV home screen app)");
         try (InputStream in = c.getInputStream()) {
             ByteArrayOutputStream buf = new ByteArrayOutputStream();
             byte[] chunk = new byte[16384];

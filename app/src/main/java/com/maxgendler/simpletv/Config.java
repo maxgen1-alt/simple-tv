@@ -74,6 +74,7 @@ final class Config {
         final Target app;
         final String link;    // live link in the app ("" = none)
         final String name;    // eTVnet: the channel's exact name on its Live screen (null = use link)
+        String logoUrl;       // the tile's cover; ruTop/ruBig show until it has downloaded
 
         Channel(String ruTop, String ruBig, Target app, String link, String name) {
             this.ruTop = ruTop;
@@ -92,6 +93,13 @@ final class Config {
         static Channel etvnet(String ruBig, String name) {
             return new Channel("", ruBig, ETVNET, "", name);
         }
+
+        /** Cover logo: a file name on Wikimedia Commons (commons.wikimedia.org). */
+        Channel logo(String commonsFile) {
+            logoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/"
+                    + android.net.Uri.encode(commonsFile) + "?width=400";
+            return this;
+        }
     }
 
     /*
@@ -106,12 +114,13 @@ final class Config {
     static final String USA_LINK = "https://tv.youtube.com/watch/Qi_C4zyXBIg";
 
     static final Channel[] CHANNELS = {
-            Channel.cable("КАНАЛ", "7", ABC_LINK),
-            Channel.cable("КАНАЛ", "4", NBC_LINK),
+            Channel.cable("КАНАЛ", "7", ABC_LINK).logo("ABC-2021-LOGO.svg"),
+            Channel.cable("КАНАЛ", "4", NBC_LINK).logo("NBC logo 2022.svg"),
             // Names exactly as eTVnet shows them in its "Центральные" row
-            Channel.etvnet("RTVI", "RTVI US"),
-            Channel.etvnet("НТВ", "НТВ America"),
-            Channel.etvnet("РТР", "РТР-Планета"),   // eTVnet channel 6 (RTR America)
+            Channel.etvnet("RTVI", "RTVI US").logo("RTVI Logo magenta fill 2021.png"),     // channel 8
+            Channel.etvnet("НТВ", "НТВ America").logo("NTV logo 2003.svg"),               // channel 13
+            Channel.etvnet("РТР", "РТР-Планета").logo("RTR-Planeta Logo.svg"),            // channel 6
+            Channel.etvnet("ПЕРВЫЙ", "Первый HD").logo("Логотип «Первого канала».svg"),   // channel 2
     };
 
     /**

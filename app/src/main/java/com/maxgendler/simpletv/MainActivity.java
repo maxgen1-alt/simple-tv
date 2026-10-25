@@ -32,7 +32,7 @@ import java.util.Locale;
 /**
  * The whole home screen: black background, a clock, and a row of giant buttons.
  *
- *   [ Knicks ] [ Chelsea ] [ 7 ] [ 4 ] [ RTVI ] [ НТВ ] [ РТР ]
+ *   [ Knicks ] [ Chelsea ] [ 7 ] [ 4 ] [ RTVI ] [ НТВ ] [ РТР ] [ Первый ]
  */
 public class MainActivity extends Activity {
 
@@ -45,7 +45,7 @@ public class MainActivity extends Activity {
 
     private TextView dateView, timeView, messageView;
     private TeamTile knicks, chelsea;
-    private Tile[] channelTiles;
+    private ChannelTile[] channelTiles;
     private Tile firstTile;
     private int upPresses = 0;
 
@@ -68,7 +68,11 @@ public class MainActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(buildScreen());
         for (TeamTile t : teams()) {
-            LogoStore.load(this, t.team, bmp -> t.showLogo(bmp));
+            LogoStore.load(this, t.team.key, t.team.logoUrl, t::showLogo);
+        }
+        for (int i = 0; i < channelTiles.length; i++) {
+            ChannelTile t = channelTiles[i];
+            LogoStore.load(this, "ch" + i, Config.CHANNELS[i].logoUrl, t::showLogo);
         }
     }
 
@@ -146,7 +150,7 @@ public class MainActivity extends Activity {
         // One row of six tiles, centered in the space below the clock
         knicks = new TeamTile(Config.KNICKS);
         chelsea = new TeamTile(Config.CHELSEA);
-        channelTiles = new Tile[Config.CHANNELS.length];
+        channelTiles = new ChannelTile[Config.CHANNELS.length];
 
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
@@ -154,7 +158,7 @@ public class MainActivity extends Activity {
         addToRow(row, chelsea.root);
         for (int i = 0; i < Config.CHANNELS.length; i++) {
             Config.Channel ch = Config.CHANNELS[i];
-            channelTiles[i] = channelTile(ch);
+            channelTiles[i] = new ChannelTile(ch);
             channelTiles[i].root.setOnClickListener(v -> openChannel(ch));
             addToRow(row, channelTiles[i].root);
         }
@@ -208,22 +212,59 @@ public class MainActivity extends Activity {
         }
     }
 
-    private Tile channelTile(Config.Channel ch) {
-        Tile t = new Tile();
-        if (!ch.ruTop.isEmpty()) {
-            TextView top = text(26, Color.parseColor("#BDBDBD"), true);
+    /** A channel: its logo on a white panel with the name underneath. Big text until the logo loads. */
+    private final class ChannelTile extends Tile {
+        final TextView top, big, caption;
+        final FrameLayout panel;
+        final ImageView logo;
+
+        ChannelTile(Config.Channel ch) {
+            top = text(26, Color.parseColor("#BDBDBD"), true);
             top.setGravity(Gravity.CENTER);
             top.setText(ch.ruTop);
-            t.content.addView(top, new LinearLayout.LayoutParams(
+            top.setVisibility(ch.ruTop.isEmpty() ? View.GONE : View.VISIBLE);
+            content.addView(top, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            big = text(110, Color.WHITE, true);
+            big.setGravity(Gravity.CENTER);
+            big.setMaxLines(1);
+            big.setAutoSizeTextTypeUniformWithConfiguration(20, 120, 2, TypedValue.COMPLEX_UNIT_SP);
+            big.setText(ch.ruBig);
+            content.addView(big, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+            // White panel so dark logos (ABC) and light ones both stand out on the black screen
+            panel = new FrameLayout(MainActivity.this);
+            GradientDrawable white = new GradientDrawable();
+            white.setCornerRadius(dp(16));
+            white.setColor(Color.WHITE);
+            panel.setBackground(white);
+            panel.setPadding(dp(10), dp(10), dp(10), dp(10));
+            logo = new ImageView(MainActivity.this);
+            logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            panel.addView(logo, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            panel.setVisibility(View.GONE);
+            content.addView(panel, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+            caption = text(22, Color.WHITE, true);
+            caption.setGravity(Gravity.CENTER);
+            caption.setMaxLines(1);
+            caption.setAutoSizeTextTypeUniformWithConfiguration(12, 22, 1, TypedValue.COMPLEX_UNIT_SP);
+            caption.setText(ch.ruTop.isEmpty() ? ch.ruBig : ch.ruTop + " " + ch.ruBig);
+            caption.setVisibility(View.GONE);
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30));
+            cp.topMargin = dp(10);
+            content.addView(caption, cp);
         }
-        TextView big = text(110, Color.WHITE, true);
-        big.setGravity(Gravity.CENTER);
-        big.setMaxLines(1);
-        big.setAutoSizeTextTypeUniformWithConfiguration(24, 120, 2, TypedValue.COMPLEX_UNIT_SP);
-        big.setText(ch.ruBig);
-        t.content.addView(big, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        return t;
+
+        void showLogo(android.graphics.Bitmap bmp) {
+            logo.setImageBitmap(bmp);
+            panel.setVisibility(View.VISIBLE);
+            caption.setVisibility(View.VISIBLE);
+            top.setVisibility(View.GONE);
+            big.setVisibility(View.GONE);
+        }
     }
 
     /** Knicks / Chelsea: the team logo, a status line, and a glow ring when a game is on. */
