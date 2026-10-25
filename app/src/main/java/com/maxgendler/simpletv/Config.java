@@ -36,7 +36,9 @@ final class Config {
 
     static final Target PARAMOUNT = new Target(
             "paramount", "Paramount+",
-            new String[]{"com.cbs.ott", "com.cbs.app"},
+            // No Paramount+ app? It's a channel inside their Prime Video, so open Prime instead.
+            new String[]{"com.cbs.ott", "com.cbs.app",
+                         "com.amazon.amazonvideo.livingroom", "com.amazon.avod.thirdpartyclient"},
             new String[]{"paramount"});
 
     static final Target DAZN = new Target(
