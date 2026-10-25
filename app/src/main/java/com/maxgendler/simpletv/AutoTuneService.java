@@ -35,8 +35,11 @@ public class AutoTuneService extends AccessibilityService {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable step = this::step;
 
-    /** Called right before we open eTVnet. */
-    static void request(String channelName) {
+    private static volatile String pendingRow = "Центральные";
+
+    /** Called right before we open eTVnet. row = the heading of the Live-screen row it's in. */
+    static void request(String channelName, String row) {
+        pendingRow = row;
         pendingName = channelName;
         pendingUntil = System.currentTimeMillis() + GIVE_UP_MS;
         scrolls = 0;
@@ -96,15 +99,23 @@ public class AutoTuneService extends AccessibilityService {
             return;
         }
 
-        // 2. We're on the Live screen (cards have channel numbers): scroll the row sideways.
+        // 2. We're on the Live screen (cards have channel numbers): find the channel's row,
+        //    scrolling down to it if needed, then scroll that row sideways.
         if (!byId(root, pkg, "channel_nr").isEmpty()) {
             if (scrolls++ > MAX_SCROLLS) {
                 pendingName = null; // not found; leave them on the Live screen
                 return;
             }
-            AccessibilityNodeInfo row = firstRow(root, pkg);
-            Log.i(TAG, "scrolling, try " + scrolls);
-            if (row != null) row.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
+            AccessibilityNodeInfo row = findRow(root, pkg, pendingRow);
+            if (row != null) {
+                Log.i(TAG, "scrolling row " + pendingRow + ", try " + scrolls);
+                row.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
+            } else {
+                Log.i(TAG, "looking further down for row " + pendingRow);
+                for (AccessibilityNodeInfo list : byId(root, pkg, "container_list")) {
+                    list.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
+                }
+            }
             handler.postDelayed(step, 700); // scrolling may not fire a new event
             return;
         }
@@ -120,13 +131,12 @@ public class AutoTuneService extends AccessibilityService {
         }
     }
 
-    /** The main channel row ("Центральные"), where RTVI and NTV live. Falls back to the first row. */
-    private static AccessibilityNodeInfo firstRow(AccessibilityNodeInfo root, String pkg) {
-        List<AccessibilityNodeInfo> rows = byId(root, pkg, "row_content");
-        for (AccessibilityNodeInfo r : rows) {
-            if (matches(r.getContentDescription(), "Центральные")) return r;
+    /** The row with this heading (each row's description is its heading), or null if it's off screen. */
+    private static AccessibilityNodeInfo findRow(AccessibilityNodeInfo root, String pkg, String heading) {
+        for (AccessibilityNodeInfo r : byId(root, pkg, "row_content")) {
+            if (matches(r.getContentDescription(), heading)) return r;
         }
-        return rows.isEmpty() ? null : rows.get(0);
+        return null;
     }
 
     private static List<AccessibilityNodeInfo> byId(AccessibilityNodeInfo root, String pkg, String id) {

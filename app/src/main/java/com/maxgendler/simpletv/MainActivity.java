@@ -32,7 +32,7 @@ import java.util.Locale;
 /**
  * The whole home screen: black background, a clock, and a row of giant buttons.
  *
- *   [ Knicks ] [ Chelsea ] [ 7 ] [ 4 ] [ RTVI ] [ НТВ ] [ РТР ] [ Первый ]
+ *   [ Knicks ] [ Chelsea ] [ 7 ] [ 4 ] [ RTVI ] [ НТВ ] [ РТР ] [ Первый ] [ Ностальгия ]
  */
 public class MainActivity extends Activity {
 
@@ -427,7 +427,7 @@ public class MainActivity extends Activity {
         } else if (ch.name != null) {
             // eTVnet: start it fresh and let AutoTuneService click through to the channel.
             // If the helper isn't switched on, they just land in eTVnet.
-            if (AutoTuneService.isEnabled(this)) AutoTuneService.request(ch.name);
+            if (AutoTuneService.isEnabled(this)) AutoTuneService.request(ch.name, ch.row);
             if (!AppLauncher.launchFresh(this, ch.app)) showMessage(CANT_OPEN);
         } else if (ch.link.isEmpty()) {
             showMessage("Канал ещё не настроен. Позвоните Максу.");

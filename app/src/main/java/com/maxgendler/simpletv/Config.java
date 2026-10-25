@@ -75,6 +75,7 @@ final class Config {
         final String link;    // live link in the app ("" = none)
         final String name;    // eTVnet: the channel's exact name on its Live screen (null = use link)
         String logoUrl;       // the tile's cover; ruTop/ruBig show until it has downloaded
+        String row = "Центральные"; // eTVnet: which row of its Live screen the channel is in
 
         Channel(String ruTop, String ruBig, Target app, String link, String name) {
             this.ruTop = ruTop;
@@ -92,6 +93,12 @@ final class Config {
         /** An eTVnet channel, found by its name on eTVnet's Live screen. */
         static Channel etvnet(String ruBig, String name) {
             return new Channel("", ruBig, ETVNET, "", name);
+        }
+
+        /** eTVnet: the row heading on its Live screen, e.g. "Развлекательные". */
+        Channel inRow(String rowHeading) {
+            row = rowHeading;
+            return this;
         }
 
         /** Cover logo: a file name on Wikimedia Commons (commons.wikimedia.org). */
@@ -121,6 +128,8 @@ final class Config {
             Channel.etvnet("НТВ", "НТВ America").logo("NTV logo 2003.svg"),               // channel 13
             Channel.etvnet("РТР", "РТР-Планета").logo("RTR-Planeta Logo.svg"),            // channel 6
             Channel.etvnet("ПЕРВЫЙ", "Первый HD").logo("Логотип «Первого канала».svg"),   // channel 2
+            Channel.etvnet("НОСТАЛЬГИЯ", "Ностальгия").inRow("Развлекательные")
+                   .logo("Nostalgiya TV Channel.png"),                                    // channel 534
     };
 
     /**
