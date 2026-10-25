@@ -81,6 +81,7 @@ final class Config {
     static final String ABC_LINK = "https://tv.youtube.com/watch/ADhENjHS-8c";
     static final String NBC_LINK = "https://tv.youtube.com/watch/fIbKmfCLA9o";
     static final String ESPN_LINK = "https://tv.youtube.com/watch/Y2iC0MjiQeI";
+    static final String USA_LINK = "https://tv.youtube.com/watch/Qi_C4zyXBIg";
 
     static final Channel[] CHANNELS = {
             new Channel("КАНАЛ", "7", ABC_LINK),
@@ -97,7 +98,7 @@ final class Config {
             {"abc", ABC_LINK},
             {"nbc", NBC_LINK},
             {"espn", ESPN_LINK},  // ESPN+ is skipped: it's an app, not this channel
-            {"usa", ""},
+            {"usa", USA_LINK},
             {"msg", ""},
             {"nba tv", ""},
     };
