@@ -375,9 +375,9 @@ public class MainActivity extends Activity {
         if (team.fallback != null) {
             if (!AppLauncher.launch(this, team.fallback)) showMessage(CANT_OPEN);
         } else if (s.game != null) {
-            showMessage("Сегодня игры нет. Следующая: " + dayAndTime(s.game.tipMs).replace('\n', ' '));
+            showInfo("Сегодня игры нет. Следующая: " + dayAndTime(s.game.tipMs).replace('\n', ' '));
         } else {
-            showMessage("Сегодня игры нет.");
+            showInfo("Сегодня игры нет.");
         }
     }
 
@@ -399,7 +399,18 @@ public class MainActivity extends Activity {
 
     // ---------------------------------------------------------------- helpers
 
+    /** Red strip: something went wrong. */
     private void showMessage(String msg) {
+        showStrip(msg, Color.parseColor("#CC8B0000"));
+    }
+
+    /** Calm blue strip: just information, nothing is broken. */
+    private void showInfo(String msg) {
+        showStrip(msg, Color.parseColor("#CC0D3B66"));
+    }
+
+    private void showStrip(String msg, int color) {
+        messageView.setBackgroundColor(color);
         messageView.setText(msg);
         messageView.setVisibility(View.VISIBLE);
         handler.removeCallbacks(hideMessage);
