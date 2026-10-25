@@ -206,7 +206,7 @@ public class MainActivity extends Activity {
             content = new LinearLayout(MainActivity.this);
             content.setOrientation(LinearLayout.VERTICAL);
             content.setGravity(Gravity.CENTER);
-            content.setPadding(dp(12), dp(16), dp(12), dp(16));
+            content.setPadding(dp(8), dp(16), dp(8), dp(16));
             root.addView(content, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         }
@@ -245,7 +245,7 @@ public class MainActivity extends Activity {
             panel.addView(logo, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             panel.setVisibility(View.GONE);
-            content.addView(panel, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+            content.addView(panel, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(120)));
 
             caption = text(22, Color.WHITE, true);
             caption.setGravity(Gravity.CENTER);
@@ -294,11 +294,13 @@ public class MainActivity extends Activity {
             name.setText(team.ruName);
             content.addView(name, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
+            // Shrinks to fit the narrow tile instead of breaking words ("Сегодн-я")
             status = text(20, Color.WHITE, true);
             status.setGravity(Gravity.CENTER);
-            status.setMinLines(2);
+            status.setMaxLines(2);
+            status.setAutoSizeTextTypeUniformWithConfiguration(10, 20, 1, TypedValue.COMPLEX_UNIT_SP);
             LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(56));
             sp.topMargin = dp(10);
             content.addView(status, sp);
 
