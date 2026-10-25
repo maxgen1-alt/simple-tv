@@ -15,8 +15,8 @@ A replacement home screen for a Google TV stick. Black screen, a big clock, six 
 
 | Button | Opens |
 |---|---|
-| **Knicks logo** | Tonight's game. If it's on a channel you've linked (ABC, NBC, ESPN... in YouTube TV), goes straight to that channel, playing. Otherwise opens the app that has it: Prime, Peacock, ESPN, or DAZN (MSG). No game on? Opens DAZN. |
-| **Chelsea logo** | Same idea. Otherwise: Peacock (Premier League), Paramount+ (Champions League, Carabao Cup), ESPN (FA Cup). No game on? Shows when the next one is. |
+| **Knicks logo** | Tonight's game. If it's on a channel you've linked (ABC, NBC, ESPN... in YouTube TV), goes straight to that channel, playing. Otherwise opens the app that has it: Prime, Peacock, ESPN, or DAZN (MSG). No game on? Says (in Russian) when the next game is. |
+| **Chelsea logo** | Same idea. Otherwise: Peacock (Premier League), Paramount+ (Champions League, Carabao Cup), ESPN (FA Cup). No game on? Same: says when the next match is. |
 | **КАНАЛ 7 / КАНАЛ 4 / RTVI / НТВ** | That exact live channel in YouTube TV (the "cable" app), already playing. |
 
 **The team buttons are the smart ones.** They download ESPN's schedule every 6 hours. Starting 1 hour before kickoff the tile pulses in team colors, says "Игра в 19:30 / Нажмите ОК" (Game at 7:30 / Press OK), and the cursor jumps onto it automatically. During the game it says "ИГРА ИДЁТ" (Game on). Between games it shows the next game's day and time.
@@ -144,6 +144,6 @@ adb shell am start -a android.intent.action.VIEW -d "https://tv.youtube.com/watc
 | Channel buttons are faded out | The live-TV app isn't installed, or its package name is different. Run `adb shell pm list packages \| grep -i youtube` and put the real name in `CABLE` in `Config.java`. |
 | "Канал ещё не настроен" | That channel's link is still empty in `Config.java`. |
 | Channel button opens the app but not the channel | The app didn't understand that link. Try another link format with the `adb shell am start` line above. |
-| A team button shows no next game | No internet, or ESPN changed its schedule file. The Knicks button still opens DAZN. |
+| A team button shows no next game | No internet, or ESPN changed its schedule file. Until it loads, the button just says there's no game. |
 | Stuck in an app | Home button always comes back. |
 | Need Android settings | Press UP 7 times on the home screen. |

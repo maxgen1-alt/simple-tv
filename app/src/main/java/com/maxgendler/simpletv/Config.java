@@ -114,7 +114,7 @@ final class Config {
         final String logoUrl;
         final int color;
         final int glowColor;
-        final Target fallback;     // opened when there's no game on (null = just say when the next game is)
+        final Target fallback;     // tried if the game's own app isn't installed (null = none)
 
         Team(String key, String ruName, Sport sport, String espnTeamId, String scheduleUrl,
              String logoUrl, int color, int glowColor, Target fallback) {
@@ -135,7 +135,7 @@ final class Config {
             "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/ny/schedule",
             "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
             Color.parseColor("#006BB6"), Color.parseColor("#F58426"),
-            DAZN); // MSG channel is on DAZN 24/7, good default
+            null);
 
     static final Team CHELSEA = new Team(
             "chelsea", "ЧЕЛСИ", Sport.SOCCER, "363",

@@ -25,6 +25,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
@@ -372,13 +373,7 @@ public class MainActivity extends Activity {
             return;
         }
 
-        if (team.fallback != null) {
-            if (!AppLauncher.launch(this, team.fallback)) showMessage(CANT_OPEN);
-        } else if (s.game != null) {
-            showInfo("Сегодня игры нет. Следующая: " + dayAndTime(s.game.tipMs).replace('\n', ' '));
-        } else {
-            showInfo("Сегодня игры нет.");
-        }
+        showInfo(s.game != null ? nextGameSentence(s.game.tipMs) : "Сегодня игры нет.");
     }
 
     private void openChannel(Config.Channel ch) {
@@ -448,8 +443,45 @@ public class MainActivity extends Activity {
         return new SimpleDateFormat("HH:mm", RU).format(new Date(ms));
     }
 
+    /** Tile status line: "Сегодня / 19:00", "Завтра / 15:00", or "ср, 28 окт. / 16:00". */
     private static String dayAndTime(long ms) {
+        int days = daysFromToday(ms);
+        if (days == 0) return "Сегодня\n" + time(ms);
+        if (days == 1) return "Завтра\n" + time(ms);
         return new SimpleDateFormat("EE, d MMM\nHH:mm", RU).format(new Date(ms));
+    }
+
+    /** "в понедельник", "во вторник"... (the form used after "в") */
+    private static final String[] ON_WEEKDAY = {
+            "в воскресенье", "в понедельник", "во вторник", "в среду", "в четверг", "в пятницу", "в субботу"};
+
+    /** e.g. "Сегодня игры нет. Следующая игра во вторник, 28 октября, в 15:00." */
+    private static String nextGameSentence(long ms) {
+        int days = daysFromToday(ms);
+        if (days == 0) return "Игра сегодня в " + time(ms) + ".";
+        String when;
+        if (days == 1) {
+            when = "завтра";
+        } else {
+            Calendar c = Calendar.getInstance();
+            c.setTimeInMillis(ms);
+            when = ON_WEEKDAY[c.get(Calendar.DAY_OF_WEEK) - 1] + ", "
+                    + new SimpleDateFormat("d MMMM", RU).format(new Date(ms)) + ",";
+        }
+        return "Сегодня игры нет. Следующая игра " + when + " в " + time(ms) + ".";
+    }
+
+    private static int daysFromToday(long ms) {
+        Calendar today = Calendar.getInstance();
+        Calendar then = Calendar.getInstance();
+        then.setTimeInMillis(ms);
+        int days = 0;
+        while (today.get(Calendar.YEAR) < then.get(Calendar.YEAR)
+                || today.get(Calendar.DAY_OF_YEAR) < then.get(Calendar.DAY_OF_YEAR)) {
+            today.add(Calendar.DAY_OF_YEAR, 1);
+            if (++days > 400) break;
+        }
+        return days;
     }
 
     private static String capitalize(String s) {
