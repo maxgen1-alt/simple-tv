@@ -250,7 +250,7 @@ public class MainActivity extends Activity {
             caption = text(22, Color.WHITE, true);
             caption.setGravity(Gravity.CENTER);
             caption.setMaxLines(1);
-            caption.setAutoSizeTextTypeUniformWithConfiguration(12, 22, 1, TypedValue.COMPLEX_UNIT_SP);
+            caption.setAutoSizeTextTypeUniformWithConfiguration(9, 22, 1, TypedValue.COMPLEX_UNIT_SP);
             caption.setText(ch.ruTop.isEmpty() ? ch.ruBig : ch.ruTop + " " + ch.ruBig);
             caption.setVisibility(View.GONE);
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30));
