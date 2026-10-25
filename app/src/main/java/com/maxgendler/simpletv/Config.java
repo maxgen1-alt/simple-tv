@@ -57,20 +57,40 @@ final class Config {
             new String[]{"com.google.android.youtube.tvunplugged"},
             new String[]{"youtube tv"});
 
-    static final Target[] ALL_TARGETS = {PRIME, PEACOCK, PARAMOUNT, DAZN, ESPN, CABLE};
+    /** Russian TV. Has no channel links, so AutoTuneService clicks through to the channel by name. */
+    static final Target ETVNET = new Target(
+            "etvnet", "eTVnet",
+            new String[]{"com.etvnet.androidtv.tvstore"},
+            new String[]{"etvnet"});
+
+    static final Target[] ALL_TARGETS = {PRIME, PEACOCK, PARAMOUNT, DAZN, ESPN, CABLE, ETVNET};
 
     // ---- Channel buttons (tiles 3 to 6) ----
 
-    /** A button that opens one live channel inside the CABLE app. */
+    /** A button that opens one live channel, either by link (YouTube TV) or by name (eTVnet). */
     static final class Channel {
         final String ruTop;   // small line above, e.g. "КАНАЛ"
         final String ruBig;   // big text, e.g. "7"
-        final String link;    // live link for this channel in the cable app ("" = not set yet)
+        final Target app;
+        final String link;    // live link in the app ("" = none)
+        final String name;    // eTVnet: the channel's exact name on its Live screen (null = use link)
 
-        Channel(String ruTop, String ruBig, String link) {
+        Channel(String ruTop, String ruBig, Target app, String link, String name) {
             this.ruTop = ruTop;
             this.ruBig = ruBig;
+            this.app = app;
             this.link = link;
+            this.name = name;
+        }
+
+        /** A YouTube TV channel opened by its live link. */
+        static Channel cable(String ruTop, String ruBig, String link) {
+            return new Channel(ruTop, ruBig, CABLE, link, null);
+        }
+
+        /** An eTVnet channel, found by its name on eTVnet's Live screen. */
+        static Channel etvnet(String ruBig, String name) {
+            return new Channel("", ruBig, ETVNET, "", name);
         }
     }
 
@@ -86,10 +106,11 @@ final class Config {
     static final String USA_LINK = "https://tv.youtube.com/watch/Qi_C4zyXBIg";
 
     static final Channel[] CHANNELS = {
-            new Channel("КАНАЛ", "7", ABC_LINK),
-            new Channel("КАНАЛ", "4", NBC_LINK),
-            new Channel("", "RTVI", ""),       // test: channel 45 (later: real RTVI)
-            new Channel("", "НТВ", ""),        // test: channel 78 (later: real NTV)
+            Channel.cable("КАНАЛ", "7", ABC_LINK),
+            Channel.cable("КАНАЛ", "4", NBC_LINK),
+            // Names exactly as eTVnet shows them in its "Центральные" row
+            Channel.etvnet("RTVI", "RTVI US"),
+            Channel.etvnet("НТВ", "НТВ America"),
     };
 
     /**

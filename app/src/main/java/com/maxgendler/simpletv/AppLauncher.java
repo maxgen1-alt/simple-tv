@@ -17,9 +17,18 @@ final class AppLauncher {
 
     /** Opens the app. Returns false if it isn't installed. */
     static boolean launch(Context context, Config.Target target) {
+        return start(context, target, Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+    }
+
+    /** Opens the app from its start screen, not wherever it was left (e.g. mid-show). */
+    static boolean launchFresh(Context context, Config.Target target) {
+        return start(context, target, Intent.FLAG_ACTIVITY_CLEAR_TASK);
+    }
+
+    private static boolean start(Context context, Config.Target target, int extraFlags) {
         Intent intent = resolve(context, target);
         if (intent == null) return false;
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | extraFlags);
         try {
             context.startActivity(intent);
             return true;

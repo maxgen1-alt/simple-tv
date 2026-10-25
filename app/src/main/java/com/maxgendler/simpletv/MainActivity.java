@@ -330,10 +330,12 @@ public class MainActivity extends Activity {
         return s;
     }
 
-    /** Channel tiles fade out if the cable app isn't installed. */
+    /** Channel tiles fade out if their app isn't installed. */
     private void refreshInstalled() {
-        float alpha = AppLauncher.isInstalled(this, Config.CABLE) ? 1f : 0.35f;
-        for (Tile t : channelTiles) t.root.setAlpha(alpha);
+        for (int i = 0; i < channelTiles.length; i++) {
+            boolean ok = AppLauncher.isInstalled(this, Config.CHANNELS[i].app);
+            channelTiles[i].root.setAlpha(ok ? 1f : 0.35f);
+        }
     }
 
     /** Cursor goes to whichever team has a game on now, otherwise the first tile. */
@@ -377,13 +379,18 @@ public class MainActivity extends Activity {
     }
 
     private void openChannel(Config.Channel ch) {
-        if (!AppLauncher.isInstalled(this, Config.CABLE)) {
+        if (!AppLauncher.isInstalled(this, ch.app)) {
             showMessage(CANT_OPEN);
+        } else if (ch.name != null) {
+            // eTVnet: start it fresh and let AutoTuneService click through to the channel.
+            // If the helper isn't switched on, they just land in eTVnet.
+            if (AutoTuneService.isEnabled(this)) AutoTuneService.request(ch.name);
+            if (!AppLauncher.launchFresh(this, ch.app)) showMessage(CANT_OPEN);
         } else if (ch.link.isEmpty()) {
             showMessage("Канал ещё не настроен. Позвоните Максу.");
-        } else if (!AppLauncher.openLink(this, Config.CABLE, ch.link)) {
+        } else if (!AppLauncher.openLink(this, ch.app, ch.link)) {
             // App didn't understand the link: at least open it.
-            if (!AppLauncher.launch(this, Config.CABLE)) showMessage(CANT_OPEN);
+            if (!AppLauncher.launch(this, ch.app)) showMessage(CANT_OPEN);
         }
     }
 

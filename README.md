@@ -17,7 +17,8 @@ A replacement home screen for a Google TV stick. Black screen, a big clock, six 
 |---|---|
 | **Knicks logo** | Tonight's game. If it's on a channel you've linked (ABC, NBC, ESPN... in YouTube TV), goes straight to that channel, playing. Otherwise opens the app that has it: Prime, Peacock, ESPN, or DAZN (MSG). No game on? Says (in Russian) when the next game is. |
 | **Chelsea logo** | Same idea. Otherwise: Peacock (Premier League), Paramount+ (Champions League, Carabao Cup), ESPN (FA Cup). No game on? Same: says when the next match is. |
-| **КАНАЛ 7 / КАНАЛ 4 / RTVI / НТВ** | That exact live channel in YouTube TV (the "cable" app), already playing. |
+| **КАНАЛ 7 / КАНАЛ 4** | ABC / NBC live in YouTube TV, already playing (opened by link). |
+| **RTVI / НТВ** | RTVI US / НТВ America in eTVnet. eTVnet has no channel links, so a built-in helper clicks Прямой эфир → the channel for them. Switch it on once: Settings → System → Accessibility → Простой ТВ. |
 
 **The team buttons are the smart ones.** They download ESPN's schedule every 6 hours. Starting 1 hour before kickoff the tile pulses in team colors, says "Игра в 19:30 / Нажмите ОК" (Game at 7:30 / Press OK), and the cursor jumps onto it automatically. During the game it says "ИГРА ИДЁТ" (Game on). Between games it shows the next game's day and time.
 
