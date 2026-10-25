@@ -78,8 +78,8 @@ final class Config {
      * YouTube TV has no channel numbers, so "7" / "4" / "45" / "78" are just which station you pick.
      */
     /** Paste each once: used by its channel button AND by Knicks/Chelsea games on that network. */
-    static final String ABC_LINK = "";
-    static final String NBC_LINK = "";
+    static final String ABC_LINK = "https://tv.youtube.com/watch/ADhENjHS-8c";
+    static final String NBC_LINK = "https://tv.youtube.com/watch/fIbKmfCLA9o";
 
     static final Channel[] CHANNELS = {
             new Channel("КАНАЛ", "7", ABC_LINK),
