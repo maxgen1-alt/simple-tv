@@ -111,6 +111,7 @@ final class Config {
             // Names exactly as eTVnet shows them in its "Центральные" row
             Channel.etvnet("RTVI", "RTVI US"),
             Channel.etvnet("НТВ", "НТВ America"),
+            Channel.etvnet("РТР", "РТР-Планета"),   // eTVnet channel 6 (RTR America)
     };
 
     /**

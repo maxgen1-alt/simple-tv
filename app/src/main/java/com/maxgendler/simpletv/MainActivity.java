@@ -30,9 +30,9 @@ import java.util.Date;
 import java.util.Locale;
 
 /**
- * The whole home screen: black background, a clock, and six giant buttons in a row.
+ * The whole home screen: black background, a clock, and a row of giant buttons.
  *
- *   [ Knicks ] [ Chelsea ] [ 7 ] [ 4 ] [ RTVI ] [ НТВ ]
+ *   [ Knicks ] [ Chelsea ] [ 7 ] [ 4 ] [ RTVI ] [ НТВ ] [ РТР ]
  */
 public class MainActivity extends Activity {
 
