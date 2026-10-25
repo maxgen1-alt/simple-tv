@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 320x180 TV banner: black with four rounded squares (the home screen in miniature) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path android:fillColor="#000000" android:pathData="M0,0h320v180h-320z" />
+    <path android:fillColor="#2B2B2B" android:pathData="M84,24h68a10,10 0,0 1,10 10v48a10,10 0,0 1,-10 10h-68a10,10 0,0 1,-10 -10v-48a10,10 0,0 1,10 -10z" />
+    <path android:fillColor="#006BB6" android:pathData="M178,24h68a10,10 0,0 1,10 10v48a10,10 0,0 1,-10 10h-68a10,10 0,0 1,-10 -10v-48a10,10 0,0 1,10 -10z" />
+    <path android:fillColor="#2B2B2B" android:pathData="M84,98h68a10,10 0,0 1,10 10v48a10,10 0,0 1,-10 10h-68a10,10 0,0 1,-10 -10v-48a10,10 0,0 1,10 -10z" />
+    <path android:fillColor="#2B2B2B" android:pathData="M178,98h68a10,10 0,0 1,10 10v48a10,10 0,0 1,-10 10h-68a10,10 0,0 1,-10 -10v-48a10,10 0,0 1,10 -10z" />
+    <path android:fillColor="#F58426" android:pathData="M212,58m-14,0a14,14 0,1 1,28 0a14,14 0,1 1,-28 0" />
+</vector>

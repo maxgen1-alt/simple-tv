@@ -1,0 +1,42 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.maxgendler.simpletv'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.maxgendler.simpletv'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // Same key every build, so updates install over the old version.
+    // Keep this repo private.
+    signingConfigs {
+        release {
+            storeFile file('simpletv.jks')
+            storePassword 'simpletv-knicks'
+            keyAlias 'simpletv'
+            keyPassword 'simpletv-knicks'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
