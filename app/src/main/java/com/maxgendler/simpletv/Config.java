@@ -80,6 +80,7 @@ final class Config {
     /** Paste each once: used by its channel button AND by Knicks/Chelsea games on that network. */
     static final String ABC_LINK = "https://tv.youtube.com/watch/ADhENjHS-8c";
     static final String NBC_LINK = "https://tv.youtube.com/watch/fIbKmfCLA9o";
+    static final String ESPN_LINK = "https://tv.youtube.com/watch/Y2iC0MjiQeI";
 
     static final Channel[] CHANNELS = {
             new Channel("КАНАЛ", "7", ABC_LINK),
@@ -95,7 +96,7 @@ final class Config {
     static final String[][] SPORTS_ON_CABLE = {
             {"abc", ABC_LINK},
             {"nbc", NBC_LINK},
-            {"espn", ""},
+            {"espn", ESPN_LINK},  // ESPN+ is skipped: it's an app, not this channel
             {"usa", ""},
             {"msg", ""},
             {"nba tv", ""},
