@@ -26,39 +26,35 @@ import android.widget.TextView;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 
 /**
- * The whole home screen: black background, a clock, and four giant buttons.
+ * The whole home screen: black background, a clock, and six giant buttons in a row.
  *
- *   [ Русское ТВ ]  [ 🏀 НИКС ]
- *   [ Amazon Prime ] [ Peacock ]
+ *   [ Knicks ] [ Chelsea ] [ 7 ] [ 4 ] [ RTVI ] [ НТВ ]
  */
 public class MainActivity extends Activity {
 
     private static final Locale RU = new Locale("ru");
-    private static final int KNICKS_BLUE = Color.parseColor("#006BB6");
-    private static final int KNICKS_ORANGE = Color.parseColor("#F58426");
     private static final int TILE_BG = Color.parseColor("#161616");
     private static final int TILE_BG_FOCUSED = Color.parseColor("#2B2B2B");
+    private static final String CANT_OPEN = "Не получается открыть. Позвоните Максу.";
 
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private ScheduleStore schedule;
 
     private TextView dateView, timeView, messageView;
-    private Tile russianTile, knicksTile, primeTile, peacockTile;
-    private TextView knicksStatusView;
-    private View knicksGlow;
-    private ObjectAnimator glowAnim;
-    private KnicksSchedule.Status knicksStatus = new KnicksSchedule.Status(KnicksSchedule.Phase.NONE, null);
+    private TeamTile knicks, chelsea;
+    private Tile[] channelTiles;
+    private Tile firstTile;
     private int upPresses = 0;
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             updateClock();
-            updateKnicks(false);
-            schedule.refreshIfStale(() -> updateKnicks(false));
+            for (TeamTile t : teams()) {
+                t.update();
+                t.store.refreshIfStale(t::update);
+            }
             handler.postDelayed(this, 30_000);
         }
     };
@@ -69,19 +65,29 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        schedule = new ScheduleStore(this);
         setContentView(buildScreen());
-        russianTile.root.requestFocus();
+        for (TeamTile t : teams()) {
+            LogoStore.load(this, t.team, bmp -> t.showLogo(bmp));
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         hideSystemBars();
-        refreshArtwork();
-        updateKnicks(true);
+        refreshInstalled();
+        for (TeamTile t : teams()) t.update();
+        focusDefault();
         handler.removeCallbacks(tick);
         handler.post(tick);
+    }
+
+    /** Home pressed while we're already showing: just put the cursor back where it belongs. */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        messageView.setVisibility(View.GONE);
+        focusDefault();
     }
 
     @Override
@@ -119,7 +125,7 @@ public class MainActivity extends Activity {
 
         LinearLayout column = new LinearLayout(this);
         column.setOrientation(LinearLayout.VERTICAL);
-        column.setPadding(dp(40), dp(24), dp(40), dp(32));
+        column.setPadding(dp(30), dp(24), dp(30), dp(24));
         root.addView(column, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -127,28 +133,35 @@ public class MainActivity extends Activity {
         LinearLayout clock = new LinearLayout(this);
         clock.setOrientation(LinearLayout.HORIZONTAL);
         clock.setGravity(Gravity.CENTER_VERTICAL);
+        clock.setPadding(dp(10), 0, dp(10), 0);
         dateView = text(30, Color.parseColor("#BDBDBD"), false);
         timeView = text(40, Color.WHITE, true);
-        View spacer = new View(this);
         clock.addView(dateView);
-        clock.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
+        clock.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         clock.addView(timeView);
         column.addView(clock, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        // Two rows of two tiles
-        russianTile = new Tile(Config.RUSSIAN_TV, TILE_BG, TILE_BG_FOCUSED, Color.WHITE);
-        knicksTile = buildKnicksTile();
-        primeTile = new Tile(Config.PRIME, TILE_BG, TILE_BG_FOCUSED, Color.WHITE);
-        peacockTile = new Tile(Config.PEACOCK, TILE_BG, TILE_BG_FOCUSED, Color.WHITE);
+        // One row of six tiles, centered in the space below the clock
+        knicks = new TeamTile(Config.KNICKS);
+        chelsea = new TeamTile(Config.CHELSEA);
+        channelTiles = new Tile[Config.CHANNELS.length];
 
-        column.addView(row(russianTile.root, knicksTile.root), rowParams());
-        column.addView(row(primeTile.root, peacockTile.root), rowParams());
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        addToRow(row, knicks.root);
+        addToRow(row, chelsea.root);
+        for (int i = 0; i < Config.CHANNELS.length; i++) {
+            Config.Channel ch = Config.CHANNELS[i];
+            channelTiles[i] = channelTile(ch);
+            channelTiles[i].root.setOnClickListener(v -> openChannel(ch));
+            addToRow(row, channelTiles[i].root);
+        }
+        firstTile = knicks;
 
-        russianTile.root.setOnClickListener(v -> open(Config.RUSSIAN_TV));
-        primeTile.root.setOnClickListener(v -> open(Config.PRIME));
-        peacockTile.root.setOnClickListener(v -> open(Config.PEACOCK));
-        knicksTile.root.setOnClickListener(v -> openKnicks());
+        column.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
+        column.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(330)));
+        column.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
 
         // Big message strip for "couldn't open" etc.
         messageView = text(34, Color.WHITE, true);
@@ -156,107 +169,158 @@ public class MainActivity extends Activity {
         messageView.setBackgroundColor(Color.parseColor("#CC8B0000"));
         messageView.setPadding(dp(24), dp(20), dp(24), dp(20));
         messageView.setVisibility(View.GONE);
-        FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
-        root.addView(messageView, mp);
+        root.addView(messageView, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
 
         return root;
     }
 
-    private Tile buildKnicksTile() {
-        Tile t = new Tile(null, KNICKS_BLUE, KNICKS_BLUE, Color.WHITE);
-        t.label.setText("🏀  НИКС");
-        t.label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 46);
-        t.image.setVisibility(View.GONE);
-
-        knicksStatusView = text(26, Color.WHITE, true);
-        knicksStatusView.setGravity(Gravity.CENTER);
-        t.content.addView(knicksStatusView, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        // Orange glow ring that pulses when a game is on / about to start
-        knicksGlow = new View(this);
-        GradientDrawable ring = new GradientDrawable();
-        ring.setCornerRadius(dp(28));
-        ring.setStroke(dp(14), KNICKS_ORANGE);
-        ring.setColor(Color.TRANSPARENT);
-        knicksGlow.setBackground(ring);
-        knicksGlow.setAlpha(0f);
-        t.root.addView(knicksGlow, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        glowAnim = ObjectAnimator.ofFloat(knicksGlow, View.ALPHA, 0.25f, 1f);
-        glowAnim.setDuration(1100);
-        glowAnim.setRepeatMode(ValueAnimator.REVERSE);
-        glowAnim.setRepeatCount(ValueAnimator.INFINITE);
-        return t;
-    }
-
-    private LinearLayout row(View a, View b) {
-        LinearLayout r = new LinearLayout(this);
-        r.setOrientation(LinearLayout.HORIZONTAL);
+    private void addToRow(LinearLayout row, View tile) {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
-        p.setMargins(dp(14), dp(14), dp(14), dp(14));
-        r.addView(a, p);
-        LinearLayout.LayoutParams p2 = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
-        p2.setMargins(dp(14), dp(14), dp(14), dp(14));
-        r.addView(b, p2);
-        return r;
+        p.setMargins(dp(8), dp(8), dp(8), dp(8));
+        row.addView(tile, p);
     }
 
-    private LinearLayout.LayoutParams rowParams() {
-        return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+    private TeamTile[] teams() {
+        return new TeamTile[]{knicks, chelsea};
     }
 
     /** One giant button. */
-    private final class Tile {
-        final Config.Target target;
+    private class Tile {
         final FrameLayout root;
         final LinearLayout content;
-        final ImageView image;
-        final TextView label;
 
-        Tile(Config.Target target, int bg, int bgFocused, int textColor) {
-            this.target = target;
+        Tile() {
             root = new FrameLayout(MainActivity.this);
             root.setFocusable(true);
             root.setClickable(true);
-            root.setBackground(tileBackground(bg, bgFocused));
+            root.setBackground(tileBackground());
             root.setOnFocusChangeListener((v, has) ->
-                    v.animate().scaleX(has ? 1.04f : 1f).scaleY(has ? 1.04f : 1f).setDuration(150).start());
+                    v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(150).start());
 
             content = new LinearLayout(MainActivity.this);
             content.setOrientation(LinearLayout.VERTICAL);
             content.setGravity(Gravity.CENTER);
-            content.setPadding(dp(24), dp(20), dp(24), dp(20));
+            content.setPadding(dp(12), dp(16), dp(12), dp(16));
             root.addView(content, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-            image = new ImageView(MainActivity.this);
-            image.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            image.setAdjustViewBounds(true);
-            LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
-            ip.bottomMargin = dp(12);
-            content.addView(image, ip);
-
-            label = text(44, textColor, true);
-            label.setGravity(Gravity.CENTER);
-            if (target != null) label.setText(target.ruLabel);
-            content.addView(label, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         }
     }
 
-    private Drawable tileBackground(int bg, int bgFocused) {
+    private Tile channelTile(Config.Channel ch) {
+        Tile t = new Tile();
+        if (!ch.ruTop.isEmpty()) {
+            TextView top = text(26, Color.parseColor("#BDBDBD"), true);
+            top.setGravity(Gravity.CENTER);
+            top.setText(ch.ruTop);
+            t.content.addView(top, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
+        TextView big = text(110, Color.WHITE, true);
+        big.setGravity(Gravity.CENTER);
+        big.setMaxLines(1);
+        big.setAutoSizeTextTypeUniformWithConfiguration(24, 120, 2, TypedValue.COMPLEX_UNIT_SP);
+        big.setText(ch.ruBig);
+        t.content.addView(big, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        return t;
+    }
+
+    /** Knicks / Chelsea: the team logo, a status line, and a glow ring when a game is on. */
+    private final class TeamTile extends Tile {
+        final Config.Team team;
+        final ScheduleStore store;
+        final ImageView logo;
+        final TextView name, status;
+        final View glow;
+        final ObjectAnimator glowAnim;
+        Schedule.Status current = new Schedule.Status(Schedule.Phase.NONE, null);
+
+        TeamTile(Config.Team team) {
+            this.team = team;
+            store = new ScheduleStore(MainActivity.this, team);
+
+            logo = new ImageView(MainActivity.this);
+            logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            logo.setVisibility(View.GONE);
+            content.addView(logo, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+            // Shown until the logo has downloaded once
+            name = text(36, Color.WHITE, true);
+            name.setGravity(Gravity.CENTER);
+            name.setMaxLines(1);
+            name.setAutoSizeTextTypeUniformWithConfiguration(16, 40, 2, TypedValue.COMPLEX_UNIT_SP);
+            name.setText(team.ruName);
+            content.addView(name, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+            status = text(20, Color.WHITE, true);
+            status.setGravity(Gravity.CENTER);
+            status.setMinLines(2);
+            LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            sp.topMargin = dp(10);
+            content.addView(status, sp);
+
+            // Glow ring in team colors that pulses when a game is on / about to start
+            glow = new View(MainActivity.this);
+            GradientDrawable ring = new GradientDrawable();
+            ring.setCornerRadius(dp(24));
+            ring.setStroke(dp(10), team.glowColor);
+            ring.setColor(Color.TRANSPARENT);
+            glow.setBackground(ring);
+            glow.setAlpha(0f);
+            root.addView(glow, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+            glowAnim = ObjectAnimator.ofFloat(glow, View.ALPHA, 0.25f, 1f);
+            glowAnim.setDuration(1100);
+            glowAnim.setRepeatMode(ValueAnimator.REVERSE);
+            glowAnim.setRepeatCount(ValueAnimator.INFINITE);
+
+            root.setOnClickListener(v -> openTeam(this));
+        }
+
+        void showLogo(android.graphics.Bitmap bmp) {
+            logo.setImageBitmap(bmp);
+            logo.setVisibility(View.VISIBLE);
+            name.setVisibility(View.GONE);
+        }
+
+        void update() {
+            current = Schedule.statusAt(store.games(), System.currentTimeMillis());
+            Schedule.Game g = current.game;
+            switch (current.phase) {
+                case LIVE:
+                    status.setText("ИГРА ИДЁТ\nНажмите ОК");
+                    break;
+                case SOON:
+                    status.setText("Игра в " + time(g.tipMs) + "\nНажмите ОК");
+                    break;
+                case LATER:
+                    status.setText(dayAndTime(g.tipMs));
+                    break;
+                default:
+                    status.setText("");
+            }
+            if (current.gameOn()) {
+                status.setTextColor(team.glowColor);
+                if (!glowAnim.isRunning()) glowAnim.start();
+            } else {
+                status.setTextColor(Color.parseColor("#BDBDBD"));
+                if (glowAnim.isRunning()) glowAnim.cancel();
+                glow.setAlpha(0f);
+            }
+        }
+    }
+
+    private Drawable tileBackground() {
         GradientDrawable normal = new GradientDrawable();
-        normal.setCornerRadius(dp(28));
-        normal.setColor(bg);
+        normal.setCornerRadius(dp(24));
+        normal.setColor(TILE_BG);
 
         GradientDrawable focused = new GradientDrawable();
-        focused.setCornerRadius(dp(28));
-        focused.setColor(bgFocused);
-        focused.setStroke(dp(10), Color.WHITE);
+        focused.setCornerRadius(dp(24));
+        focused.setColor(TILE_BG_FOCUSED);
+        focused.setStroke(dp(8), Color.WHITE);
 
         StateListDrawable s = new StateListDrawable();
         s.addState(new int[]{android.R.attr.state_focused}, focused);
@@ -265,13 +329,21 @@ public class MainActivity extends Activity {
         return s;
     }
 
-    private void refreshArtwork() {
-        for (Tile t : new Tile[]{russianTile, primeTile, peacockTile}) {
-            Drawable art = AppLauncher.artwork(this, t.target);
-            t.image.setImageDrawable(art);
-            t.image.setVisibility(art == null ? View.INVISIBLE : View.VISIBLE);
-            t.root.setAlpha(AppLauncher.isInstalled(this, t.target) ? 1f : 0.35f);
+    /** Channel tiles fade out if the cable app isn't installed. */
+    private void refreshInstalled() {
+        float alpha = AppLauncher.isInstalled(this, Config.CABLE) ? 1f : 0.35f;
+        for (Tile t : channelTiles) t.root.setAlpha(alpha);
+    }
+
+    /** Cursor goes to whichever team has a game on now, otherwise the first tile. */
+    private void focusDefault() {
+        for (TeamTile t : teams()) {
+            if (t.current.gameOn()) {
+                t.root.requestFocus();
+                return;
+            }
         }
+        firstTile.root.requestFocus();
     }
 
     // ---------------------------------------------------------------- clock
@@ -283,79 +355,58 @@ public class MainActivity extends Activity {
         timeView.setText(new SimpleDateFormat("HH:mm", RU).format(now));
     }
 
-    // ---------------------------------------------------------------- Knicks
+    // ---------------------------------------------------------------- opening things
 
-    private void updateKnicks(boolean moveFocusIfGame) {
-        List<KnicksSchedule.Game> games = schedule.games();
-        knicksStatus = KnicksSchedule.statusAt(games, System.currentTimeMillis());
-        KnicksSchedule.Game g = knicksStatus.game;
+    private void openTeam(TeamTile t) {
+        Config.Team team = t.team;
+        Schedule.Status s = t.current;
 
-        switch (knicksStatus.phase) {
-            case LIVE:
-                knicksStatusView.setText("ИГРА ИДЁТ\nНажмите ОК");
-                startGlow();
-                break;
-            case SOON:
-                knicksStatusView.setText("Игра в " + time(g.tipMs) + "\nНажмите ОК");
-                startGlow();
-                break;
-            case LATER:
-                knicksStatusView.setText("Следующая игра:\n" + dayAndTime(g.tipMs));
-                stopGlow();
-                break;
-            default:
-                knicksStatusView.setText("");
-                stopGlow();
+        if (s.gameOn() && s.game != null) {
+            // 1. Game is on a channel the cable app has a link for: straight to the channel.
+            if (AppLauncher.openLink(this, Config.CABLE, Schedule.cableLink(s.game))) return;
+            // 2. Otherwise open the app that has the game.
+            if (AppLauncher.launch(this, targetForKey(s.game.targetKey))) return;
+            // 3. That app isn't installed: try the team's everyday app.
+            if (team.fallback != null && AppLauncher.launch(this, team.fallback)) return;
+            showMessage(CANT_OPEN);
+            return;
         }
 
-        boolean gameOn = knicksStatus.phase == KnicksSchedule.Phase.LIVE
-                || knicksStatus.phase == KnicksSchedule.Phase.SOON;
-        if (moveFocusIfGame && gameOn) knicksTile.root.requestFocus();
+        if (team.fallback != null) {
+            if (!AppLauncher.launch(this, team.fallback)) showMessage(CANT_OPEN);
+        } else if (s.game != null) {
+            showMessage("Сегодня игры нет. Следующая: " + dayAndTime(s.game.tipMs).replace('\n', ' '));
+        } else {
+            showMessage("Сегодня игры нет.");
+        }
     }
 
-    private void startGlow() {
-        if (!glowAnim.isRunning()) glowAnim.start();
-    }
-
-    private void stopGlow() {
-        if (glowAnim.isRunning()) glowAnim.cancel();
-        knicksGlow.setAlpha(0f);
-    }
-
-    private void openKnicks() {
-        Config.Target target = Config.DAZN; // MSG channel is on DAZN 24/7, good default
-        boolean gameOn = knicksStatus.phase == KnicksSchedule.Phase.LIVE
-                || knicksStatus.phase == KnicksSchedule.Phase.SOON;
-        if (gameOn && knicksStatus.game != null) target = targetForKey(knicksStatus.game.targetKey);
-
-        if (!AppLauncher.launch(this, target)) {
-            // Fall back to DAZN if, say, ESPN isn't installed.
-            if (target == Config.DAZN || !AppLauncher.launch(this, Config.DAZN)) {
-                showMessage("Не получается открыть. Позвоните Максу.");
-            }
+    private void openChannel(Config.Channel ch) {
+        if (!AppLauncher.isInstalled(this, Config.CABLE)) {
+            showMessage(CANT_OPEN);
+        } else if (ch.link.isEmpty()) {
+            showMessage("Канал ещё не настроен. Позвоните Максу.");
+        } else if (!AppLauncher.openLink(this, Config.CABLE, ch.link)) {
+            // App didn't understand the link: at least open it.
+            if (!AppLauncher.launch(this, Config.CABLE)) showMessage(CANT_OPEN);
         }
     }
 
     private static Config.Target targetForKey(String key) {
-        if (Config.PRIME.key.equals(key)) return Config.PRIME;
-        if (Config.PEACOCK.key.equals(key)) return Config.PEACOCK;
-        if (Config.ESPN.key.equals(key)) return Config.ESPN;
+        for (Config.Target t : Config.ALL_TARGETS) if (t.key.equals(key)) return t;
         return Config.DAZN;
     }
 
     // ---------------------------------------------------------------- helpers
 
-    private void open(Config.Target target) {
-        if (!AppLauncher.launch(this, target)) {
-            showMessage("Не получается открыть. Позвоните Максу.");
-        }
-    }
-
     private void showMessage(String msg) {
         messageView.setText(msg);
         messageView.setVisibility(View.VISIBLE);
-        handler.postDelayed(() -> messageView.setVisibility(View.GONE), 6000);
+        handler.removeCallbacks(hideMessage);
+        handler.postDelayed(hideMessage, 6000);
     }
+
+    private final Runnable hideMessage = () -> messageView.setVisibility(View.GONE);
 
     private void openAndroidSettings() {
         try {
@@ -387,7 +438,7 @@ public class MainActivity extends Activity {
     }
 
     private static String dayAndTime(long ms) {
-        return new SimpleDateFormat("EE, d MMM · HH:mm", RU).format(new Date(ms));
+        return new SimpleDateFormat("EE, d MMM\nHH:mm", RU).format(new Date(ms));
     }
 
     private static String capitalize(String s) {

@@ -9,12 +9,15 @@
 
     <!-- Lets us see and open the other apps (required on Android 11+) -->
     <queries>
-        <package android:name="com.etvnet.androidtv.tvstore" />
+        <package android:name="com.google.android.youtube.tvunplugged" />
         <package android:name="com.amazon.amazonvideo.livingroom" />
         <package android:name="com.amazon.avod.thirdpartyclient" />
         <package android:name="com.peacocktv.peacockandroid" />
+        <package android:name="com.cbs.ott" />
+        <package android:name="com.cbs.app" />
         <package android:name="com.dazn" />
         <package android:name="com.espn.gtv" />
+        <package android:name="com.espn.score_center" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
@@ -22,6 +25,10 @@
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
         </intent>
     </queries>
 
@@ -48,13 +55,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
+        </activity>
 
-            <!-- Can be the HOME screen (what the Home button opens) -->
+        <!--
+            Makes this THE home screen (what the Home button opens).
+            OFF by default, so installing on your own Chromecast never touches your home screen.
+            Turn on for their stick only:
+              adb shell pm enable com.maxgendler.simpletv/.HomeScreen
+        -->
+        <activity-alias
+            android:name=".HomeScreen"
+            android:enabled="false"
+            android:exported="true"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-        </activity>
+        </activity-alias>
     </application>
 </manifest>

@@ -1,34 +1,31 @@
 # Простой ТВ (Simple TV)
 
-A replacement home screen for a Google TV stick. Black screen, a big clock, four giant buttons, Russian labels. Built for Grandma and Grandpa.
+A replacement home screen for a Google TV stick. Black screen, a big clock, six giant buttons in a row, Russian labels. Built for Grandma and Grandpa.
 
 ```
- Суббота, 31 октября                          19:12
-┌───────────────────────┐ ┌───────────────────────┐
-│                       │ │      🏀  НИКС          │
-│    [eTVnet logo]      │ │     ИГРА ИДЁТ          │
-│     Русское ТВ        │ │     Нажмите ОК         │
-└───────────────────────┘ └───────────────────────┘
-┌───────────────────────┐ ┌───────────────────────┐
-│   [Prime Video logo]  │ │    [Peacock logo]     │
-│     Amazon Prime      │ │       Peacock         │
-└───────────────────────┘ └───────────────────────┘
+ Суббота, 31 октября                                         19:12
+┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+│[Knicks]│ │[Chelsea│ │ КАНАЛ  │ │ КАНАЛ  │ │        │ │        │
+│ logo]  │ │ logo]  │ │   7    │ │   4    │ │  RTVI  │ │  НТВ   │
+│ИГРА ИДЁТ│ │Сб 31 окт│ │        │ │        │ │        │ │        │
+└────────┘ └────────┘ └────────┘ └────────┘ └────────┘ └────────┘
 ```
 
 ## What each button does
 
 | Button | Opens |
 |---|---|
-| **Русское ТВ** (Russian TV) | eTVnet |
-| **🏀 НИКС** (Knicks) | Whatever app tonight's game is on: Prime, Peacock, or DAZN (MSG). No game on? Opens DAZN. |
-| **Amazon Prime** | Prime Video |
-| **Peacock** | Peacock |
+| **Knicks logo** | Tonight's game. If it's on a channel you've linked (ABC, NBC, ESPN... in YouTube TV), goes straight to that channel, playing. Otherwise opens the app that has it: Prime, Peacock, ESPN, or DAZN (MSG). No game on? Opens DAZN. |
+| **Chelsea logo** | Same idea. Otherwise: Peacock (Premier League), Paramount+ (Champions League, Carabao Cup), ESPN (FA Cup). No game on? Shows when the next one is. |
+| **КАНАЛ 7 / КАНАЛ 4 / RTVI / НТВ** | That exact live channel in YouTube TV (the "cable" app), already playing. |
 
-**The Knicks button is the smart one.** It downloads the NBA's official schedule twice a day. Starting 1 hour before tip-off it pulses orange, says "Игра в 19:30 / Нажмите ОК" (Game at 7:30 / Press OK), and the cursor jumps onto it automatically. During the game it says "ИГРА ИДЁТ" (Game on). Between games it shows the next game's day and time.
+**The team buttons are the smart ones.** They download ESPN's schedule every 6 hours. Starting 1 hour before kickoff the tile pulses in team colors, says "Игра в 19:30 / Нажмите ОК" (Game at 7:30 / Press OK), and the cursor jumps onto it automatically. During the game it says "ИГРА ИДЁТ" (Game on). Between games it shows the next game's day and time.
+
+**What "straight to the game" can and can't do.** Live channels (YouTube TV, and NBC/ABC/ESPN games on them) open already playing, with one click. Games that are only on Prime / Peacock / Paramount+ open that app, but Android doesn't let one app press "Watch" inside another, so they'd still need to pick the game there.
 
 Other details:
-- The logos are pulled from the real apps once they're installed, so they look familiar.
-- Back button does nothing on the home screen, so they can't get lost. Home button always comes back here.
+- Team logos download once from ESPN and are saved on the stick.
+- Back button does nothing on the home screen, so they can't get lost. Home button always comes back here (once you've turned on the home-screen switch in Step 3).
 - If an app won't open, a red banner says "Не получается открыть. Позвоните Максу." (Can't open it. Call Max.)
 - **Secret admin door for you:** press **UP 7 times** in a row to open Android Settings.
 
@@ -72,22 +69,24 @@ You'll need `adb` on your laptop. It comes with Android Studio, or install "Andr
    ```
    adb install -r SimpleTV.apk
    ```
-6. Open **Простой ТВ** from your apps row. Click around. This doesn't replace your home screen, so nothing changes for you.
+6. Open **Простой ТВ** from your apps row. Click around. Its home-screen switch is off by default, so your Home button and home screen stay exactly as they are.
+7. Done testing? `adb uninstall com.maxgendler.simpletv` removes it completely.
 
 ---
 
 ## Step 3. Set up their stick at your apartment
 
 1. **Set up the stick** like normal with your phone. Use your Google account or make one for them.
-2. **Install and sign in** from the Play Store: **eTVnet**, **Prime Video**, **Peacock**, **DAZN**. Sign into each one now (much easier than at their place).
+2. **Install and sign in** from the Play Store: their live-TV app (**YouTube TV** for now), **Prime Video**, **Peacock**, **Paramount+**, **DAZN**. Sign into each one now (much easier than at their place).
 3. **Unlock developer mode + USB debugging** (same as Step 2).
 4. **Install the app:** `adb connect <their stick's ip>:5555` then `adb install -r SimpleTV.apk`
-5. **Make it THE home screen** by turning off Google's home screen:
+5. **Make it THE home screen**: turn on its home-screen switch, then turn off Google's home screen:
    ```
+   adb shell pm enable com.maxgendler.simpletv/.HomeScreen
    adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
    adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith
    ```
-   Press **Home** on the remote. You should see the four buttons. If it asks which home app to use, pick **Простой ТВ → Always**.
+   Press **Home** on the remote. You should see the six buttons. If it asks which home app to use, pick **Простой ТВ → Always**.
 6. **Other settings worth changing** (press UP 7 times to get to Settings):
    - Display & Sound → **HDMI-CEC** → on. The stick will turn the TV on and switch to itself.
    - System → **Ambient mode / Screensaver** → turn off or set to clock, so nothing confusing pops up.
@@ -97,6 +96,7 @@ You'll need `adb` on your laptop. It comes with Android Studio, or install "Andr
 ```
 adb shell pm enable com.google.android.apps.tv.launcherx
 adb shell pm enable com.google.android.tungsten.setupwraith
+adb shell pm disable com.maxgendler.simpletv/.HomeScreen
 ```
 
 > A big Google update can occasionally turn their home screen back on. If Grandma suddenly sees the Google screen, just rerun the two `disable-user` lines.
@@ -124,18 +124,26 @@ adb shell pm enable com.google.android.tungsten.setupwraith
 ## Changing things
 
 Everything adjustable is in **`app/src/main/java/com/maxgendler/simpletv/Config.java`**:
-- Button names (the Russian labels)
-- How early the Knicks button starts glowing (default 1 hour)
-- `PREFER_DAZN_OVER_ESPN`: ESPN/ABC games that are also on MSG go to DAZN (default on, since they won't have ESPN). If you add the ESPN app, set it to `false`.
+- `CHANNELS`: the four channel buttons. Each has a label and a **live link**. To get a link: on a computer open tv.youtube.com → Live → start the channel → copy the address bar.
+- `SPORTS_ON_CABLE`: live links for ABC / NBC / ESPN / USA / MSG, so team games on those channels open straight to the channel.
+- `CABLE`: which live-TV app the channel buttons use (YouTube TV now; switch to their real provider later).
+- How early the team buttons start glowing (default 1 hour), and each team's everyday app.
 - The secret admin press count
 
-Change it, rebuild (Step 1), reinstall with `adb install -r SimpleTV.apk`.
+Change it, push to GitHub (it builds the APK), reinstall with `adb install -r SimpleTV.apk`.
+
+**Testing a link before putting it in the app:** this does exactly what the button does:
+```
+adb shell am start -a android.intent.action.VIEW -d "https://tv.youtube.com/watch/PASTE_ID" com.google.android.youtube.tvunplugged
+```
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| A button is faded out | That app isn't installed, or its package name is different. Run `adb shell pm list packages \| grep -i etv` (or prime, peacock, dazn) and put the real name in `Config.java`. |
-| Knicks button shows no next game | No internet, or the NBA moved its schedule file. The button still works and opens DAZN. |
+| Channel buttons are faded out | The live-TV app isn't installed, or its package name is different. Run `adb shell pm list packages \| grep -i youtube` and put the real name in `CABLE` in `Config.java`. |
+| "Канал ещё не настроен" | That channel's link is still empty in `Config.java`. |
+| Channel button opens the app but not the channel | The app didn't understand that link. Try another link format with the `adb shell am start` line above. |
+| A team button shows no next game | No internet, or ESPN changed its schedule file. The Knicks button still opens DAZN. |
 | Stuck in an app | Home button always comes back. |
 | Need Android settings | Press UP 7 times on the home screen. |

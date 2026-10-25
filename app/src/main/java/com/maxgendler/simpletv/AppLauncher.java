@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 
 import java.util.List;
 import java.util.Locale;
@@ -19,6 +20,26 @@ final class AppLauncher {
         Intent intent = resolve(context, target);
         if (intent == null) return false;
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+        try {
+            context.startActivity(intent);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Opens a link (a live channel, a game page) inside that app, skipping its home screen.
+     * Returns false if the app isn't installed or doesn't understand the link.
+     */
+    static boolean openLink(Context context, Config.Target target, String link) {
+        if (link == null || link.isEmpty()) return false;
+        Intent app = resolve(context, target);
+        String pkg = app == null ? null : packageOf(app);
+        if (pkg == null) return false;
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                .setPackage(pkg)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         try {
             context.startActivity(intent);
             return true;
