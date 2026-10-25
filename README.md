@@ -88,7 +88,8 @@ You'll need `adb` on your laptop. It comes with Android Studio, or install "Andr
    adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith
    ```
    Press **Home** on the remote. You should see the six buttons. If it asks which home app to use, pick **Простой ТВ → Always**.
-6. **Other settings worth changing** (press UP 7 times to get to Settings):
+6. **Switch on the eTVnet helper** (makes RTVI / НТВ open straight to the channel): Settings → System → **Accessibility** → **Простой ТВ** → on → OK. Sign into **eTVnet** first.
+7. **Other settings worth changing** (press UP 7 times to get to Settings):
    - Display & Sound → **HDMI-CEC** → on. The stick will turn the TV on and switch to itself.
    - System → **Ambient mode / Screensaver** → turn off or set to clock, so nothing confusing pops up.
    - Accounts → Google TV → turn on **Apps only mode** (backup, in case Google's home ever comes back).
