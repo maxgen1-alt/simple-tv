@@ -25,13 +25,15 @@ final class Schedule {
         final String opponent;    // abbreviation, e.g. "BOS"
         final boolean home;
         final String networks;    // lowercase channel names, comma separated, e.g. "nbc,peacock"
+        final String league;      // ESPN league slug, e.g. "eng.1" ("" if unknown)
 
-        Game(long tipMs, String targetKey, String opponent, boolean home, String networks) {
+        Game(long tipMs, String targetKey, String opponent, boolean home, String networks, String league) {
             this.tipMs = tipMs;
             this.targetKey = targetKey;
             this.opponent = opponent;
             this.home = home;
             this.networks = networks;
+            this.league = league;
         }
     }
 
@@ -84,7 +86,7 @@ final class Schedule {
             String networks = networks(comp.optJSONArray("broadcasts"));
             JSONObject league = event.optJSONObject("league");
             String leagueSlug = league == null ? "" : league.optString("slug", "");
-            out.add(new Game(tip, pickTargetKey(team.sport, networks, leagueSlug), opponent, home, networks));
+            out.add(new Game(tip, pickTargetKey(team.sport, networks, leagueSlug), opponent, home, networks, leagueSlug));
         }
         Collections.sort(out, (a, b) -> Long.compare(a.tipMs, b.tipMs));
         return out;
@@ -131,13 +133,18 @@ final class Schedule {
         return Config.PEACOCK.key; // Premier League
     }
 
-    /** The live link for this game's channel in the cable app, or null if none is set. */
+    /**
+     * The live link for this game's channel in the cable app, or null if none is set.
+     * Checked before any streaming app, so a game on a cable channel always opens there.
+     * Names must match exactly ("nbc", "usa net"): NBCSN isn't NBC and ESPN2 isn't ESPN.
+     */
     static String cableLink(Game game) {
         if (game.networks.isEmpty()) return null;
         for (String name : game.networks.split(",")) {
             if (name.contains("+")) continue; // ESPN+, Paramount+ etc. are apps, not channels
             for (String[] rule : Config.SPORTS_ON_CABLE) {
-                if (!rule[1].isEmpty() && name.contains(rule[0])) return rule[1];
+                boolean same = name.equals(rule[0]) || name.startsWith(rule[0] + " ");
+                if (same && !rule[1].isEmpty()) return rule[1];
             }
         }
         return null;
@@ -188,7 +195,7 @@ final class Schedule {
         return out;
     }
 
-    // ---------- Compact cache format: tip|key|opp|H|networks;... ----------
+    // ---------- Compact cache format: tip|key|opp|H|networks|league;... ----------
 
     static String serialize(List<Game> games) {
         StringBuilder sb = new StringBuilder();
@@ -196,7 +203,7 @@ final class Schedule {
             if (sb.length() > 0) sb.append(';');
             sb.append(g.tipMs).append('|').append(g.targetKey).append('|')
               .append(g.opponent).append('|').append(g.home ? 'H' : 'A').append('|')
-              .append(g.networks);
+              .append(g.networks).append('|').append(g.league);
         }
         return sb.toString();
     }
@@ -206,9 +213,9 @@ final class Schedule {
         if (s == null || s.isEmpty()) return out;
         for (String row : s.split(";")) {
             String[] p = row.split("\\|", -1);
-            if (p.length != 5) continue;
+            if (p.length != 6) continue;
             try {
-                out.add(new Game(Long.parseLong(p[0]), p[1], p[2], "H".equals(p[3]), p[4]));
+                out.add(new Game(Long.parseLong(p[0]), p[1], p[2], "H".equals(p[3]), p[4], p[5]));
             } catch (NumberFormatException ignored) {
             }
         }

@@ -131,7 +131,9 @@ final class Config {
             {"abc", ABC_LINK},
             {"nbc", NBC_LINK},
             {"espn", ESPN_LINK},  // ESPN+ is skipped: it's an app, not this channel
-            {"usa", USA_LINK},
+            {"usa", USA_LINK},     // ESPN lists it as "USA Net"
+            {"nbcsn", ""},         // NBC's sports cable channel, separate from NBC (channel 4)
+            {"espn2", ""},
             {"msg", ""},
             {"nba tv", ""},
     };
