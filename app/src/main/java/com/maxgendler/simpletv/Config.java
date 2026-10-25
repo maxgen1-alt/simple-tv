@@ -77,9 +77,13 @@ final class Config {
      * and copy the address bar (looks like https://tv.youtube.com/watch/AbCdEf12345...).
      * YouTube TV has no channel numbers, so "7" / "4" / "45" / "78" are just which station you pick.
      */
+    /** Paste each once: used by its channel button AND by Knicks/Chelsea games on that network. */
+    static final String ABC_LINK = "";
+    static final String NBC_LINK = "";
+
     static final Channel[] CHANNELS = {
-            new Channel("КАНАЛ", "7", ""),     // test: channel 7
-            new Channel("КАНАЛ", "4", ""),     // test: channel 4
+            new Channel("КАНАЛ", "7", ABC_LINK),
+            new Channel("КАНАЛ", "4", NBC_LINK),
             new Channel("", "RTVI", ""),       // test: channel 45 (later: real RTVI)
             new Channel("", "НТВ", ""),        // test: channel 78 (later: real NTV)
     };
@@ -87,11 +91,10 @@ final class Config {
     /**
      * Sports games on a channel the cable app carries go straight to that channel: one click, game on.
      * Left side: a word in ESPN's channel listing. Right side: that channel's live link ("" = not set).
-     * In New York, channel 7 is ABC and channel 4 is NBC, so you can reuse those two links here.
      */
     static final String[][] SPORTS_ON_CABLE = {
-            {"abc", ""},
-            {"nbc", ""},
+            {"abc", ABC_LINK},
+            {"nbc", NBC_LINK},
             {"espn", ""},
             {"usa", ""},
             {"msg", ""},
