@@ -6,6 +6,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
@@ -21,6 +22,7 @@ import java.util.Locale;
  */
 public class AutoTuneService extends AccessibilityService {
 
+    private static final String TAG = "AutoTune";
     private static final String LIVE_TAB = "Прямой эфир";
     private static final long GIVE_UP_MS = 25_000;
     private static final int MAX_SCROLLS = 40;
@@ -28,6 +30,7 @@ public class AutoTuneService extends AccessibilityService {
     private static volatile String pendingName;
     private static volatile long pendingUntil;
     private static volatile int scrolls;
+    private static volatile int focusTries;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable step = this::step;
@@ -37,6 +40,7 @@ public class AutoTuneService extends AccessibilityService {
         pendingName = channelName;
         pendingUntil = System.currentTimeMillis() + GIVE_UP_MS;
         scrolls = 0;
+        focusTries = 0;
     }
 
     static boolean isEnabled(Context context) {
@@ -74,12 +78,22 @@ public class AutoTuneService extends AccessibilityService {
         String pkg = String.valueOf(root.getPackageName());
         if (!pkg.equals(Config.ETVNET.packages[0])) return;
 
-        // 1. The channel's card is on screen: press it. Done.
+        // 1. The channel's card is on screen. eTVnet plays whichever card is highlighted,
+        //    so highlight it first (like moving the remote onto it), then press it.
         for (AccessibilityNodeInfo n : byId(root, pkg, "card_text_view")) {
-            if (matches(n.getText(), target) && click(n)) {
-                pendingName = null;
+            if (!matches(n.getText(), target)) continue;
+            AccessibilityNodeInfo card = clickableParent(n);
+            if (card == null) continue;
+            if (!card.isFocused() && focusTries++ < 3) {
+                Log.i(TAG, "focusing " + target);
+                card.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
+                handler.postDelayed(step, 600);
                 return;
             }
+            Log.i(TAG, "clicking " + target);
+            card.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            pendingName = null;
+            return;
         }
 
         // 2. We're on the Live screen (cards have channel numbers): scroll the row sideways.
@@ -89,6 +103,7 @@ public class AutoTuneService extends AccessibilityService {
                 return;
             }
             AccessibilityNodeInfo row = firstRow(root, pkg);
+            Log.i(TAG, "scrolling, try " + scrolls);
             if (row != null) row.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
             handler.postDelayed(step, 700); // scrolling may not fire a new event
             return;
@@ -97,7 +112,9 @@ public class AutoTuneService extends AccessibilityService {
         // 3. Anywhere else in eTVnet (it opens on its Archive tab): press "Прямой эфир".
         for (AccessibilityNodeInfo n : byId(root, pkg, "nav_button")) {
             if (matches(n.getText(), LIVE_TAB)) {
-                click(n);
+                Log.i(TAG, "opening Live tab");
+                AccessibilityNodeInfo tab = clickableParent(n);
+                if (tab != null) tab.performAction(AccessibilityNodeInfo.ACTION_CLICK);
                 return;
             }
         }
@@ -121,11 +138,11 @@ public class AutoTuneService extends AccessibilityService {
         return text.toString().trim().toLowerCase(Locale.ROOT).equals(wanted.trim().toLowerCase(Locale.ROOT));
     }
 
-    /** Clicks the node, or the nearest parent that can be clicked (the whole channel card). */
-    private static boolean click(AccessibilityNodeInfo node) {
+    /** The node, or the nearest parent that can be clicked (the whole channel card). */
+    private static AccessibilityNodeInfo clickableParent(AccessibilityNodeInfo node) {
         for (AccessibilityNodeInfo n = node; n != null; n = n.getParent()) {
-            if (n.isClickable()) return n.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            if (n.isClickable()) return n;
         }
-        return false;
+        return null;
     }
 }
