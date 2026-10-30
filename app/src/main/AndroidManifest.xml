@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Lets the settings screen install updates (Android still asks you to confirm each one) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Lets later updates install without a confirm box (Android 12+, once it installed itself) -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
     <!-- TV app: no touchscreen needed, works on Google TV / Android TV -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
@@ -32,6 +34,11 @@
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
+        </intent>
+        <!-- Home screens: so Settings can check another one exists before turning ours off -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
         </intent>
     </queries>
 

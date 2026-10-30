@@ -7,6 +7,7 @@ import android.widget.EditText;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -91,6 +92,11 @@ public class SettingsActivity extends Activity {
      */
     private void toggleHomeScreen() {
         boolean on = isHomeScreen();
+        if (on && !otherHomeScreenExists()) {
+            status.setText("Not turned off: there's no other home screen (Google TV's is off), so the TV would go black."
+                    + " Turn Google TV's back on first: adb shell pm enable com.google.android.apps.tv.launcherx");
+            return;
+        }
         getPackageManager().setComponentEnabledSetting(homeAlias(),
                 on ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED : PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                 PackageManager.DONT_KILL_APP);
@@ -102,6 +108,16 @@ public class SettingsActivity extends Activity {
     private void showHomeScreenState() {
         homeButton.setText(isHomeScreen() ? "Home screen: Simple TV is ON (press to turn off)"
                                           : "Make Simple TV the home screen");
+    }
+
+    /** Is there a real home screen besides ours? (Android's blank FallbackHome doesn't count.) */
+    private boolean otherHomeScreenExists() {
+        Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+        for (ResolveInfo r : getPackageManager().queryIntentActivities(home, 0)) {
+            String pkg = r.activityInfo.packageName;
+            if (!pkg.equals(getPackageName()) && !r.activityInfo.name.endsWith("FallbackHome")) return true;
+        }
+        return false;
     }
 
     private boolean isHomeScreen() {

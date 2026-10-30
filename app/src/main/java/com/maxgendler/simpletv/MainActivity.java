@@ -65,6 +65,7 @@ public class MainActivity extends Activity {
                 t.store.refreshIfStale(t::update);
             }
             PrimeGames.refreshIfStale(MainActivity.this);
+            Updater.autoUpdateIfDue(MainActivity.this); // only runs while the home screen is showing
             handler.postDelayed(this, 30_000);
         }
     };
@@ -180,6 +181,8 @@ public class MainActivity extends Activity {
         rowParams.topMargin = dp(10);
         column.addView(top, rowParams);
         column.addView(bottom, new LinearLayout.LayoutParams(rowParams));
+        // Let the selected tile grow past its row without its ring being cut off
+        for (ViewGroup g : new ViewGroup[]{top, bottom, column, root}) g.setClipChildren(false);
 
         // Big message strip for "couldn't open" etc.
         messageView = text(34, Color.WHITE, true);

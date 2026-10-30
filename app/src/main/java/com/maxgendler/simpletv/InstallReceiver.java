@@ -8,9 +8,13 @@ import android.widget.Toast;
 
 /** Hears back from Android's installer: shows its confirm box, or says what went wrong. */
 public class InstallReceiver extends BroadcastReceiver {
+    /** Extra: this was an automatic update, so never pop up boxes on Grandpa's screen. */
+    static final String QUIET = "quiet";
+
     @Override
     public void onReceive(Context context, Intent intent) {
         int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE);
+        if (intent.getBooleanExtra(QUIET, false)) return; // automatic: a failure just retries later
         if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
             @SuppressWarnings("deprecation")
             Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
