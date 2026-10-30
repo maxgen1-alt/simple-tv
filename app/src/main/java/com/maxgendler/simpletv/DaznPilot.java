@@ -20,7 +20,8 @@ final class DaznPilot extends Pilot {
 
     private final String team;
     private static final int MAX_WAITS = 25; // screen reads, ~2-3 s apart
-    private int waits, downs, blindDowns, sideways, backs;
+    private static final int OPENING_READS = 5;
+    private int waits, downs, blindDowns, sideways, backs, opening;
 
     DaznPilot(String teamWord) {
         team = teamWord;
@@ -33,6 +34,10 @@ final class DaznPilot extends Pilot {
 
     @Override
     protected Key decide(List<Line> lines, Pixels px) {
+        // Done: the game is starting. The player still lists "Join live" behind the video, and
+        // another press there would pause it.
+        if (pressedWatch) return say(Key.NONE, "done");
+
         // 0. DAZN shows "Getting things ready for you..." for ~15 s; presses then are lost or worse
         boolean loaded = false;
         for (Line l : lines) {
@@ -57,6 +62,11 @@ final class DaznPilot extends Pilot {
             pressedWatch = true;
             return say(Key.OK, "join live");
         }
+        // Just opened a game: give its "Join live" screen a few reads to appear before moving on
+        if (opening > 0) {
+            opening--;
+            return say(Key.NONE, "waiting for the game's screen");
+        }
 
         // 2. The big banner at the top is his team's game, live, with "Watch now" highlighted
         Line live = null, watchNow = null;
@@ -67,6 +77,7 @@ final class DaznPilot extends Pilot {
         if (live != null && watchNow != null && lit(watchNow, px)) {
             for (Line l : lines) {
                 if (l.t > live.b && l.t - live.b < 90 && isGameTitle(l.text, team)) {
+                    opening = OPENING_READS;
                     return say(Key.OK, "banner: " + l.text);
                 }
             }
@@ -101,6 +112,7 @@ final class DaznPilot extends Pilot {
             return say(Key.RIGHT, "along the live row");
         }
         if (focused == target || (Math.abs(focused.l - target.l) < 40 && Math.abs(focused.t - target.t) < 40)) {
+            opening = OPENING_READS;
             return say(Key.OK, "open " + target.text);
         }
         if (Math.abs(focused.t - target.t) > 60) {

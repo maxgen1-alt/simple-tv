@@ -24,6 +24,8 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.util.Locale;
+
 /** Max's settings screen (home screen: Up 5 times, then Left 5 times): updates and Android settings. In English on purpose. */
 public class SettingsActivity extends Activity {
 
@@ -61,7 +63,7 @@ public class SettingsActivity extends Activity {
         homeButton = button("", v -> toggleHomeScreen());
         col.addView(button("Photo album link", v -> editAlbumLink()), buttonParams());
         col.addView(button("Test Peacock Chelsea game (helper drives)", v -> testGuide()), buttonParams());
-        col.addView(button("Test DAZN " + DAZN_TEST_TEAM + " game (helper drives)", v -> testDazn()), buttonParams());
+        col.addView(button("Test DAZN game (helper drives)", v -> testDazn()), buttonParams());
         col.addView(button("Test Prime game (today's listed game)", v -> testPrime()), buttonParams());
         col.addView(button("Android settings", v -> open(new Intent(Settings.ACTION_SETTINGS))), buttonParams());
         col.addView(button("Accessibility (eTVnet helper)",
@@ -212,22 +214,34 @@ public class SettingsActivity extends Activity {
         }
     }
 
-    /** Which team the DAZN test looks for (any team with a live game on DAZN's home works). */
-    private static final String DAZN_TEST_TEAM = "devils";
-
-    /** Same as the Knicks button on a DAZN (MSG+) game day: the helper drives DAZN to the live game. */
+    /**
+     * Same as the Knicks button on a DAZN (MSG+) game day: the helper drives DAZN to the live game.
+     * Asks which team to look for, so it can be tried on any game DAZN has on (e.g. "devils").
+     */
     private void testDazn() {
         if (!AutoTuneService.isEnabled(this)) {
             status.setText("Switch on the eTVnet helper first (Accessibility). It also drives DAZN.");
             return;
         }
-        if (AppLauncher.launchFresh(this, Config.DAZN)) {
-            AutoTuneService.startGuide(new AutoTuneService.Guide(null,
-                    "Найдите игру «" + DAZN_TEST_TEAM + "» и нажмите круглую кнопку ◉",
-                    "Нажмите «Join live» — игра начнётся", DAZN_TEST_TEAM, DAZN_TEST_TEAM, null).steerDazn());
-        } else {
-            status.setText("DAZN isn't installed.");
-        }
+        EditText field = new EditText(this);
+        field.setSingleLine(true);
+        field.setText(Config.KNICKS.key);
+        new AlertDialog.Builder(this)
+                .setTitle("Which team's game should it find on DAZN?")
+                .setView(field)
+                .setPositiveButton("Go", (d, w) -> {
+                    String team = field.getText().toString().trim().toLowerCase(Locale.ROOT);
+                    if (team.isEmpty()) return;
+                    if (AppLauncher.launchFresh(this, Config.DAZN)) {
+                        AutoTuneService.startGuide(new AutoTuneService.Guide(null,
+                                "Найдите игру «" + team + "» и нажмите круглую кнопку ◉",
+                                "Нажмите «Join live» — игра начнётся", team, team, null).steerDazn());
+                    } else {
+                        status.setText("DAZN isn't installed.");
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     /** Same as the Knicks button on a Prime game day: today's game from prime-games.txt, OK pressed for him. */

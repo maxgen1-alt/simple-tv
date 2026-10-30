@@ -22,7 +22,7 @@ final class PeacockPilot extends Pilot {
     private static final int BIG_TITLE = 40; // px tall: a page title, not a row tile's caption
 
     private final String team;
-    private int lefts, explored, profileTries;
+    private int lefts, explored, profileTries, watchPresses;
     private boolean onSports;
 
     PeacockPilot(String teamWord) {
@@ -76,6 +76,9 @@ final class PeacockPilot extends Pilot {
             return say(lit.cy() < sports.cy() ? Key.DOWN : Key.UP, "menu towards sports");
         }
 
+        // Pressed Watch twice (tile, then the game page if one opened): leave the player alone
+        if (watchPresses >= 2) return say(Key.NONE, "done");
+
         // 4. The team's game on screen: walk to it
         Line game = findGame(lines);
         Line watch = litWatchButton(lines, px);
@@ -85,6 +88,7 @@ final class PeacockPilot extends Pilot {
                 // The game's own page (big title, WATCH highlighted under it). Row titles are small,
                 // so a tile in the row above can't be mistaken for this.
                 pressedWatch = true;
+                watchPresses++;
                 return say(Key.OK, "watch (game page)");
             }
             if (watch == null) return say(Key.DOWN, "game seen, no highlight yet");
@@ -93,6 +97,7 @@ final class PeacockPilot extends Pilot {
             if (sameColumn && rightBelow) {
                 // A row tile turns into INFO / WATCH when highlighted; its title sits just under it
                 pressedWatch = true;
+                watchPresses++;
                 return say(Key.OK, "watch (tile)");
             }
             if (game.t > watch.b + 260) return say(Key.DOWN, "towards game (down)");
