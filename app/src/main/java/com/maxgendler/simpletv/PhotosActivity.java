@@ -26,7 +26,8 @@ import java.util.regex.Pattern;
 
 /**
  * Family photos from ONE shared Google Photos album (the link saved in settings). View only:
- * ◀ ▶ (or OK) to flip through, Back to go home. Nothing here can change the album.
+ * Plays as a slideshow (every 10 seconds); ◀ ▶ (or OK) flip by hand, Back goes home.
+ * Nothing here can change the album.
  */
 public class PhotosActivity extends Activity {
 
@@ -39,6 +40,10 @@ public class PhotosActivity extends Activity {
     private ImageView image;
     private TextView counter;
     private int index = 0;
+
+    /** Slideshow: next photo every 10 seconds unless they press a button (which restarts the count). */
+    private static final long SLIDE_MS = 10_000;
+    private final Runnable nextSlide = () -> show(index + 1);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,6 +94,8 @@ public class PhotosActivity extends Activity {
     private void show(int i) {
         if (photos.isEmpty()) return;
         index = (i + photos.size()) % photos.size(); // wraps around at the ends
+        main.removeCallbacks(nextSlide);
+        main.postDelayed(nextSlide, SLIDE_MS);
         counter.setText("◀   " + (index + 1) + " из " + photos.size() + "   ▶");
         String url = photos.get(index);
         Bitmap cached = cache.get(url);
@@ -116,6 +123,18 @@ public class PhotosActivity extends Activity {
                 // Leave it blank; pressing ▶ moves on.
             }
         }, "photo").start();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        main.removeCallbacks(nextSlide); // no slideshow running behind other screens
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!photos.isEmpty()) show(index);
     }
 
     @Override
