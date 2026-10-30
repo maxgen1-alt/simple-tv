@@ -2,6 +2,11 @@ plugins {
     id 'com.android.application'
 }
 
+dependencies {
+    // Reads the words on screen for the game banner (bundled model, works offline)
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
+}
+
 android {
     namespace 'com.maxgendler.simpletv'
     compileSdk 35

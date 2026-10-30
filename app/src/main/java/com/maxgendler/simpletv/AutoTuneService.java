@@ -4,8 +4,13 @@ import android.accessibilityservice.AccessibilityService;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.Rect;
+import android.hardware.HardwareBuffer;
+import android.os.Build;
+import android.view.Display;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
@@ -21,8 +26,15 @@ import android.widget.TextView;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.Text;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * eTVnet has no links to its channels, so this presses the buttons for them:
@@ -87,18 +99,45 @@ public class AutoTuneService extends AccessibilityService {
 
     // ---------------------------------------------------------------- game guide banner
     //
-    // Prime / Peacock / DAZN hide their screens, so we can't press things in them. Instead, a big
-    // banner sits on top of the app and tells Grandpa what to press, one step per OK press.
-    // It goes away once a show has been playing (sound on) for a few seconds, on Home, or after 5 minutes.
+    // Prime / Peacock / DAZN hide their screens from helpers, so we can't press things in them. Instead,
+    // a big banner sits on top of the app and tells Grandpa what to press. Every 2 seconds the helper
+    // takes a picture of the screen and reads its English words (on-device, nothing leaves the stick):
+    //   "Who's watching?"            -> pick the profile
+    //   team name + a "Watch" button -> press Watch
+    //   anything else                -> find the game
+    // so the banner follows wherever he actually is, even after a wrong click. If reading ever fails it
+    // falls back to one step per OK press. It hides once the game plays, on Home, or after 5 minutes.
+
+    /** What to show for one app: the profile step is null when the app has no profile screen. */
+    static final class Guide {
+        final String profile, find, watch, teamWord, teamRu;
+
+        Guide(String profile, String find, String watch, String teamWord, String teamRu) {
+            this.profile = profile;
+            this.find = find;
+            this.watch = watch;
+            this.teamWord = teamWord;
+            this.teamRu = teamRu;
+        }
+    }
+
+    private enum Stage { PROFILE, FIND, WATCH, WRONG_SHOW }
 
     private static final long GUIDE_MAX_MS = 5 * 60_000;
     private static final int PLAYING_SECONDS = 6;
+    private static final long WRONG_SHOW_MS = 20_000;
+    private static final long READ_EVERY_MS = 2000;
+    private static final Pattern WATCH_BUTTON =
+            Pattern.compile("\\b(watch|watch live|watch now|play|resume|start over)\\b");
     private static volatile AutoTuneService instance;
 
     private TextView banner;
-    private String[] guideSteps;
-    private int guideStep, okPresses, playingSeconds;
-    private long guideUntil;
+    private Guide guide;
+    private Stage stage;
+    private int okPresses, playingSeconds;
+    private boolean sawWatch, screenBlank, readerWorks, reading;
+    private long guideUntil, wrongShowUntil, lastRead;
+    private TextRecognizer reader;
     private final Runnable guideTick = this::guideTick;
 
     @Override
@@ -113,10 +152,10 @@ public class AutoTuneService extends AccessibilityService {
         return super.onUnbind(intent);
     }
 
-    /** Shows the banner with these steps (no-op if the helper is switched off). */
-    static void startGuide(String[] steps) {
+    /** Shows the banner for this app (no-op if the helper is switched off). */
+    static void startGuide(Guide g) {
         AutoTuneService s = instance;
-        if (s != null) s.handler.post(() -> s.showGuide(steps));
+        if (s != null) s.handler.post(() -> s.showGuide(g));
     }
 
     static void stopGuide() {
@@ -124,12 +163,16 @@ public class AutoTuneService extends AccessibilityService {
         if (s != null) s.handler.post(s::hideGuide);
     }
 
-    private void showGuide(String[] steps) {
+    private void showGuide(Guide g) {
         hideGuide();
-        guideSteps = steps;
-        guideStep = 0;
+        guide = g;
+        stage = g.profile != null ? Stage.PROFILE : Stage.FIND;
         okPresses = 0;
         playingSeconds = 0;
+        sawWatch = false;
+        screenBlank = false;
+        readerWorks = false;
+        wrongShowUntil = 0;
         guideUntil = System.currentTimeMillis() + GUIDE_MAX_MS;
 
         banner = new TextView(this);
@@ -165,9 +208,24 @@ public class AutoTuneService extends AccessibilityService {
     }
 
     private void showStepText() {
-        String prefix = guideSteps.length > 1
-                ? "Шаг " + (guideStep + 1) + " из " + guideSteps.length + ":  " : "";
-        banner.setText(prefix + guideSteps[guideStep]);
+        if (banner == null) return;
+        if (stage == Stage.WRONG_SHOW) {
+            banner.setText("Если это не игра «" + guide.teamRu + "» — нажмите НАЗАД");
+            return;
+        }
+        int total = guide.profile != null ? 3 : 2;
+        int n = stage == Stage.PROFILE ? 1 : stage == Stage.FIND ? total - 1 : total;
+        String text = stage == Stage.PROFILE ? guide.profile : stage == Stage.FIND ? guide.find : guide.watch;
+        banner.setText("Шаг " + n + " из " + total + ":  " + text);
+    }
+
+    private void setStage(Stage s) {
+        if (s == Stage.PROFILE && guide.profile == null) s = Stage.FIND;
+        if (s == Stage.WATCH) sawWatch = true;
+        if (s != stage) {
+            stage = s;
+            showStepText();
+        }
     }
 
     private void hideGuide() {
@@ -181,40 +239,135 @@ public class AutoTuneService extends AccessibilityService {
         }
     }
 
-    /** Once a second: gone after the game has been playing a few seconds (or after 5 minutes). */
+    /** Once a second: read the screen every 2 seconds, and hide once the game is playing. */
     private void guideTick() {
         if (banner == null) return;
-        if (System.currentTimeMillis() > guideUntil) {
+        long now = System.currentTimeMillis();
+        if (now > guideUntil || (stage == Stage.WRONG_SHOW && now > wrongShowUntil)) {
             hideGuide();
             return;
         }
-        // Only count sound after he's gone through the steps, so trailers on the app's home don't hide it
-        boolean pastSteps = okPresses >= Math.max(1, guideSteps.length - 1);
+        if (!reading && now - lastRead >= READ_EVERY_MS) readScreen();
+
+        // Playing = steady sound. With screen reading, a playing video also looks blank (the picture
+        // is protected), which tells it apart from trailers on the app's home page.
+        boolean playingLooksReal = readerWorks ? screenBlank : okPresses >= (guide.profile != null ? 2 : 1);
         AudioManager audio = (AudioManager) getSystemService(AUDIO_SERVICE);
-        playingSeconds = pastSteps && audio.isMusicActive() ? playingSeconds + 1 : 0;
-        if (playingSeconds >= PLAYING_SECONDS) {
-            hideGuide();
-            return;
+        playingSeconds = playingLooksReal && audio.isMusicActive() ? playingSeconds + 1 : 0;
+        if (playingSeconds >= PLAYING_SECONDS && stage != Stage.WRONG_SHOW) {
+            if (sawWatch || !readerWorks) {
+                hideGuide(); // he pressed Watch on the team's game: enjoy
+                return;
+            }
+            // Something is playing, but we never saw the team's game page: maybe a misclick
+            stage = Stage.WRONG_SHOW;
+            wrongShowUntil = now + WRONG_SHOW_MS;
+            showStepText();
         }
         handler.postDelayed(guideTick, 1000);
     }
 
-    /** Watches (never blocks) remote presses while the banner is up: OK = next step, Back = previous. */
+    /** Takes a picture of the screen and reads its English words (Android 11+; on-device only). */
+    private void readScreen() {
+        if (Build.VERSION.SDK_INT < 30) return;
+        reading = true;
+        lastRead = System.currentTimeMillis();
+        try {
+            takeScreenshot(Display.DEFAULT_DISPLAY, getMainExecutor(), new TakeScreenshotCallback() {
+                @Override
+                public void onSuccess(ScreenshotResult shot) {
+                    Bitmap picture = null;
+                    try (HardwareBuffer buffer = shot.getHardwareBuffer()) {
+                        Bitmap hw = Bitmap.wrapHardwareBuffer(buffer, shot.getColorSpace());
+                        if (hw != null) picture = hw.copy(Bitmap.Config.ARGB_8888, false);
+                    } catch (Exception ignored) {
+                    }
+                    if (picture == null) {
+                        reading = false;
+                        return;
+                    }
+                    readText(picture);
+                }
+
+                @Override
+                public void onFailure(int errorCode) {
+                    reading = false;
+                }
+            });
+        } catch (Exception e) {
+            reading = false;
+        }
+    }
+
+    private void readText(Bitmap picture) {
+        if (reader == null) reader = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+        Rect skip = bannerRect(picture);
+        reader.process(InputImage.fromBitmap(picture, 0))
+              .addOnSuccessListener(text -> {
+                  StringBuilder words = new StringBuilder();
+                  for (Text.TextBlock block : text.getTextBlocks()) {
+                      Rect box = block.getBoundingBox();
+                      if (box != null && skip != null && Rect.intersects(box, skip)) continue; // our own banner
+                      words.append(block.getText()).append('\n');
+                  }
+                  readerWorks = true;
+                  onScreenWords(words.toString().toLowerCase(Locale.ROOT).replace('’', '\''));
+              })
+              .addOnCompleteListener(t -> reading = false);
+    }
+
+    /** Where our banner is, in the screenshot's pixels, so its own words are ignored. */
+    private Rect bannerRect(Bitmap picture) {
+        if (banner == null || banner.getWidth() == 0) return null;
+        int[] at = new int[2];
+        banner.getLocationOnScreen(at);
+        float sx = picture.getWidth() / (float) getResources().getDisplayMetrics().widthPixels;
+        float sy = picture.getHeight() / (float) getResources().getDisplayMetrics().heightPixels;
+        return new Rect(Math.round(at[0] * sx), Math.round(at[1] * sy),
+                Math.round((at[0] + banner.getWidth()) * sx), Math.round((at[1] + banner.getHeight()) * sy));
+    }
+
+    private void onScreenWords(String words) {
+        if (banner == null) return;
+        screenBlank = words.trim().length() < 12; // a protected, playing video reads as (almost) nothing
+        if (screenBlank || stage == Stage.WRONG_SHOW) return;
+        if (words.contains("who's watching") || words.contains("who is watching")
+                || words.contains("choose profile") || words.contains("select profile")) {
+            setStage(Stage.PROFILE);
+        } else if (words.contains(guide.teamWord) && WATCH_BUTTON.matcher(words).find()) {
+            setStage(Stage.WATCH);
+        } else {
+            setStage(Stage.FIND);
+        }
+    }
+
+    /**
+     * Watches (never blocks) remote presses while the banner is up. Each press makes the helper look
+     * at the screen again soon; if screen reading isn't working, OK / Back move the steps instead.
+     */
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
         if (banner != null && event.getAction() == KeyEvent.ACTION_UP) {
             int k = event.getKeyCode();
-            if (k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER) {
-                okPresses++;
-                if (guideStep < guideSteps.length - 1) guideStep++;
-                showStepText();
-            } else if (k == KeyEvent.KEYCODE_BACK && guideStep > 0) {
-                guideStep--;
-                okPresses = Math.max(0, okPresses - 1);
-                showStepText();
-            } else if (k == KeyEvent.KEYCODE_HOME) {
+            if (k == KeyEvent.KEYCODE_HOME) {
                 hideGuide();
+                return false;
             }
+            if (k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER) okPresses++;
+            if (!readerWorks) {
+                if (k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER) {
+                    setStage(stage == Stage.PROFILE ? Stage.FIND : Stage.WATCH);
+                } else if (k == KeyEvent.KEYCODE_BACK) {
+                    setStage(stage == Stage.WATCH ? Stage.FIND : Stage.PROFILE);
+                    okPresses = Math.max(0, okPresses - 1);
+                }
+            }
+            if (stage == Stage.WRONG_SHOW && k == KeyEvent.KEYCODE_BACK) {
+                stage = Stage.FIND; // he backed out of the wrong show: help him find the game again
+                playingSeconds = 0;
+                showStepText();
+            }
+            lastRead = 0; // look again right away
         }
         return false; // the key still goes to the app as normal
     }

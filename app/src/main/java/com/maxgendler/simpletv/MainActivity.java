@@ -487,18 +487,16 @@ public class MainActivity extends Activity {
         showInfo(s.game != null ? nextGameSentence(s.game.tipMs) : "Сегодня игры нет.");
     }
 
-    /** What the banner tells Grandpa to press in each app, one step per OK press. */
-    static String[] guideSteps(Config.Target app, Config.Team team) {
-        String game = "Найдите игру «" + team.ruName + "» и нажмите ОК";
+    /** What the banner tells Grandpa to press in each app (the helper picks the step from the screen). */
+    static AutoTuneService.Guide guideSteps(Config.Target app, Config.Team team) {
+        String find = "Найдите игру «" + team.ruName + "» и нажмите ОК";
         String watch = "Нажмите «Watch» (Смотреть) — игра начнётся";
-        if (app == Config.PEACOCK) {
-            return new String[]{"Выберите «" + Config.PEACOCK_PROFILE + "» и нажмите ОК", game, watch};
-        }
-        if (app == Config.PRIME || app == Config.PARAMOUNT) { // Paramount+ opens inside Prime
-            return new String[]{"Выберите «" + Config.PRIME_PROFILE + "» и нажмите ОК", game, watch};
-        }
-        if (app == Config.CABLE) return new String[]{game};
-        return new String[]{game, watch}; // DAZN, ESPN
+        String profile = null;
+        if (app == Config.PEACOCK) profile = Config.PEACOCK_PROFILE;
+        if (app == Config.PRIME || app == Config.PARAMOUNT) profile = Config.PRIME_PROFILE; // Paramount+ is inside Prime
+        String pick = profile == null ? null : "Выберите «" + profile + "» и нажмите ОК";
+        // team.key ("knicks" / "chelsea") is how the team's name reads on the apps' English screens
+        return new AutoTuneService.Guide(pick, find, watch, team.key, team.ruName);
     }
 
     private void openChannel(Config.Channel ch) {
