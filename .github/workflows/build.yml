@@ -4,9 +4,15 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write   # to publish each main build as a Release (what the app's updater downloads)
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Every build gets a higher number, so the app can tell a new version from its own
+      VERSION_CODE: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
@@ -23,7 +29,21 @@ jobs:
         with:
           gradle-version: '8.14.3'
 
+      # The signing key lives only in the repo's encrypted Secrets, never in the code.
+      - name: Signing key
+        env:
+          SIGNING_KEY_B64: ${{ secrets.SIGNING_KEY_B64 }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          echo "$SIGNING_KEY_B64" | base64 -d > "$RUNNER_TEMP/signing.p12"
+          alias=$(keytool -list -v -storetype pkcs12 -keystore "$RUNNER_TEMP/signing.p12" \
+                  -storepass "$SIGNING_KEY_PASSWORD" | sed -n 's/^Alias name: //p' | head -1)
+          echo "SIGNING_KEY_FILE=$RUNNER_TEMP/signing.p12" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_ALIAS=$alias" >> "$GITHUB_ENV"
+
       - name: Build
+        env:
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: gradle assembleRelease
 
       - name: Rename
@@ -33,3 +53,14 @@ jobs:
         with:
           name: SimpleTV
           path: SimpleTV.apk
+
+      # The app's "Check for updates" reads version.json from the latest Release
+      - name: Publish release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          code=$((VERSION_CODE + 100))
+          echo "{\"versionCode\": $code, \"versionName\": \"2.$VERSION_CODE\"}" > version.json
+          gh release create "build-$VERSION_CODE" SimpleTV.apk version.json \
+            --title "Build $VERSION_CODE" --notes "$(git log -1 --pretty=%s)" --latest

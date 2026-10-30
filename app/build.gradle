@@ -10,28 +10,32 @@ android {
         applicationId 'com.maxgendler.simpletv'
         minSdk 26
         targetSdk 34
-        versionCode 2
-        versionName '2.0'
+        // GitHub builds count up (build 25 -> versionCode 125), so updates always look newer
+        def run = (System.getenv('VERSION_CODE') ?: '0').toInteger()
+        versionCode run + 100
+        versionName "2.$run"
     }
 
     // Same key every build, so updates install over the old version.
-    // Keep this repo private.
+    // The key is NOT in this repo: GitHub builds get it from the repo's Secrets
+    // (SIGNING_KEY_B64 / SIGNING_KEY_PASSWORD). Local builds use Android's debug key.
+    def signingFile = System.getenv('SIGNING_KEY_FILE')
     signingConfigs {
         release {
-            storeFile file('simpletv.jks')
-            storePassword 'simpletv-knicks'
-            keyAlias 'simpletv'
-            keyPassword 'simpletv-knicks'
+            if (signingFile) {
+                storeFile file(signingFile)
+                storeType 'pkcs12'
+                storePassword System.getenv('SIGNING_KEY_PASSWORD')
+                keyAlias System.getenv('SIGNING_KEY_ALIAS')
+                keyPassword System.getenv('SIGNING_KEY_PASSWORD')
+            }
         }
     }
 
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig signingConfigs.release
-        }
-        debug {
-            signingConfig signingConfigs.release
+            signingConfig signingFile ? signingConfigs.release : signingConfigs.debug
         }
     }
 

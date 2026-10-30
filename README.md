@@ -43,13 +43,13 @@ Pick one.
 4. Your file is at `app/build/outputs/apk/debug/app-debug.apk`.
 
 ### Option B: GitHub builds it for you (no installs)
-1. Create a **private** repo on GitHub and push this folder to it (Claude Code on your laptop can do this: "push this folder to a new private GitHub repo").
+1. Push this folder to a GitHub repo, and add the signing key to its Settings → Secrets: `SIGNING_KEY_B64` (the .p12 file, base64) and `SIGNING_KEY_PASSWORD`.
 2. Go to the repo's **Actions** tab. The "Build APK" job runs automatically.
 3. When it's green, click it and download **SimpleTV** at the bottom. That's your APK.
 
 Every future change you push rebuilds it automatically.
 
-> Keep the repo private. It contains the signing key (`app/simpletv.jks`), which is what lets updates install on top of the old version.
+> The signing key is what lets updates install on top of the old version. It is NOT in this repo: it lives in GitHub Secrets, with a backup in "Documents → SimpleTV signing key" on Max's PC. Every build on main is also published as a GitHub Release, which the app's updater downloads.
 
 ---
 
