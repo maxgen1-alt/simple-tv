@@ -138,11 +138,17 @@ public class AutoTuneService extends AccessibilityService {
             return this;
         }
 
-        boolean steerPeacock;
+        boolean steerPeacock, steerDazn;
 
         /** Peacock has no game links: the helper drives it to the game itself (see PeacockPilot). */
         Guide steerPeacock() {
             steerPeacock = true;
+            return this;
+        }
+
+        /** DAZN's game links all land on its home: the helper drives it to the game (see DaznPilot). */
+        Guide steerDazn() {
+            steerDazn = true;
             return this;
         }
     }
@@ -175,7 +181,7 @@ public class AutoTuneService extends AccessibilityService {
             pressedWatchLive;
     private long guideUntil, wrongShowUntil, lastRead, autoWaitUntil, lastReopen;
     private String startsAt; // "19:00" while the game's page says it hasn't started yet
-    private PeacockPilot pilot; // while it drives Peacock for him
+    private Pilot pilot; // while it drives Peacock / DAZN for him
     private long pilotPauseUntil;
     private TextRecognizer reader;
     private final Runnable guideTick = this::guideTick;
@@ -241,7 +247,9 @@ public class AutoTuneService extends AccessibilityService {
         startsAt = null;
         lastReopen = 0;
         guideUntil = System.currentTimeMillis() + GUIDE_MAX_MS;
-        pilot = g.steerPeacock && Build.VERSION.SDK_INT >= 33 ? new PeacockPilot(g.teamWord) : null;
+        pilot = Build.VERSION.SDK_INT < 33 ? null
+                : g.steerPeacock ? new PeacockPilot(g.teamWord)
+                : g.steerDazn ? new DaznPilot(g.teamWord) : null;
         // Peacock takes a few seconds to open; don't read its splash screen
         pilotPauseUntil = System.currentTimeMillis() + 5000;
         autoWaitUntil = canPressForHim() || pilot != null ? System.currentTimeMillis() + AUTO_WAIT_MS : 0;
@@ -388,8 +396,8 @@ public class AutoTuneService extends AccessibilityService {
               .addOnSuccessListener(text -> {
                   // Word by word: a title half-hidden behind our banner ("Knicks vs. 76e") still counts
                   StringBuilder words = new StringBuilder();
-                  List<PeacockPilot.Line> lines = new ArrayList<>();
-                  float scale = 1080f / picture.getHeight(); // PeacockPilot measures in 1080p pixels
+                  List<Pilot.Line> lines = new ArrayList<>();
+                  float scale = 1080f / picture.getHeight(); // Pilot measures in 1080p pixels
                   for (Text.TextBlock block : text.getTextBlocks()) {
                       for (Text.Line line : block.getLines()) {
                           StringBuilder kept = new StringBuilder();
@@ -406,7 +414,7 @@ public class AutoTuneService extends AccessibilityService {
                           }
                           words.append('\n');
                           if (lineBox != null) {
-                              lines.add(new PeacockPilot.Line(kept.toString().replace('’', '\''),
+                              lines.add(new Pilot.Line(kept.toString().replace('’', '\''),
                                       Math.round(lineBox.left * scale), Math.round(lineBox.top * scale),
                                       Math.round(lineBox.right * scale), Math.round(lineBox.bottom * scale)));
                           }
@@ -414,7 +422,7 @@ public class AutoTuneService extends AccessibilityService {
                   }
                   readerWorks = true;
                   onScreenWords(words.toString().toLowerCase(Locale.ROOT).replace('’', '\''));
-                  steerPeacock(lines, picture, scale);
+                  steer(lines, picture, scale);
               })
               .addOnCompleteListener(t -> reading = false);
     }
@@ -518,43 +526,81 @@ public class AutoTuneService extends AccessibilityService {
         return guide != null && guide.pressForHim && Build.VERSION.SDK_INT >= 33;
     }
 
-    /** Peacock: one remote press towards the game per screen read (see PeacockPilot). */
-    private void steerPeacock(List<PeacockPilot.Line> lines, Bitmap picture, float scale) {
+    /** Peacock / DAZN: one remote press towards the game per screen read (see Pilot). */
+    private void steer(List<Pilot.Line> seen, Bitmap picture, float scale) {
         if (banner == null || pilot == null || !pilot.active() || screenBlank) return;
         long now = System.currentTimeMillis();
         if (now < pilotPauseUntil) return;
-        PeacockPilot.Key key = pilot.next(lines, (l, t, r, b) -> countYellow(picture, l, t, r, b, scale));
-        Log.i(TAG, "peacock: " + key + " (" + pilot.why + ")");
+        List<Pilot.Line> lines = pilot.readsElements() ? elementLines() : seen;
+        Pilot.Key key = pilot.next(lines, new Pilot.Pixels() {
+            @Override
+            public int yellow(int l, int t, int r, int b) {
+                return countPixels(picture, l, t, r, b, scale, true);
+            }
+
+            @Override
+            public int white(int l, int t, int r, int b) {
+                return countPixels(picture, l, t, r, b, scale, false);
+            }
+        });
+        Log.i(TAG, "pilot: " + key + " (" + pilot.why + ")");
         if (pilot.pressedWatch()) sawWatch = true;
-        if (key == PeacockPilot.Key.NONE) {
+        if (key == Pilot.Key.NONE) {
             showStepText(); // gave up: back to telling him the steps
             return;
         }
-        // After OK the app loads something new; after a move, Peacock slides for a moment
-        pilotPauseUntil = now + (key == PeacockPilot.Key.OK ? 4500 : 1200);
+        // After OK / Back the app loads something new; after a move, it slides for a moment
+        pilotPauseUntil = now + (key == Pilot.Key.OK || key == Pilot.Key.BACK ? 4500 : 1200);
         autoWaitUntil = now + AUTO_WAIT_MS;
         showStepText();
-        int action = key == PeacockPilot.Key.OK ? GLOBAL_ACTION_DPAD_CENTER
-                : key == PeacockPilot.Key.UP ? GLOBAL_ACTION_DPAD_UP
-                : key == PeacockPilot.Key.DOWN ? GLOBAL_ACTION_DPAD_DOWN
-                : key == PeacockPilot.Key.LEFT ? GLOBAL_ACTION_DPAD_LEFT : GLOBAL_ACTION_DPAD_RIGHT;
+        int action = key == Pilot.Key.OK ? GLOBAL_ACTION_DPAD_CENTER
+                : key == Pilot.Key.BACK ? GLOBAL_ACTION_BACK
+                : key == Pilot.Key.UP ? GLOBAL_ACTION_DPAD_UP
+                : key == Pilot.Key.DOWN ? GLOBAL_ACTION_DPAD_DOWN
+                : key == Pilot.Key.LEFT ? GLOBAL_ACTION_DPAD_LEFT : GLOBAL_ACTION_DPAD_RIGHT;
         handler.postDelayed(() -> {
             if (banner != null) performGlobalAction(action);
         }, 300);
     }
 
-    /** Yellow pixels in a box given in 1080p pixels (every other pixel, times 4). */
-    private static int countYellow(Bitmap picture, int l, int t, int r, int b, float scale) {
+    /** The app's own screen elements with words (DAZN shows them), in 1080p pixels. */
+    private List<Pilot.Line> elementLines() {
+        List<Pilot.Line> out = new ArrayList<>();
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) return out;
+        float scale = 1080f / getResources().getDisplayMetrics().heightPixels;
+        collect(root, out, scale, 0);
+        return out;
+    }
+
+    private static void collect(AccessibilityNodeInfo node, List<Pilot.Line> out, float scale, int depth) {
+        if (node == null || depth > 40) return;
+        CharSequence words = node.getText() != null && node.getText().length() > 0
+                ? node.getText() : node.getContentDescription();
+        if (words != null && words.length() > 0 && node.isVisibleToUser()) {
+            Rect box = new Rect();
+            node.getBoundsInScreen(box);
+            if (!box.isEmpty()) {
+                out.add(new Pilot.Line(words.toString().replace('’', '\''), Math.round(box.left * scale),
+                        Math.round(box.top * scale), Math.round(box.right * scale), Math.round(box.bottom * scale)));
+            }
+        }
+        for (int i = 0; i < node.getChildCount(); i++) collect(node.getChild(i), out, scale, depth + 1);
+    }
+
+    /** Yellow (Peacock) or white (DAZN) pixels in a box given in 1080p pixels. */
+    private static int countPixels(Bitmap picture, int l, int t, int r, int b, float scale, boolean yellow) {
         int x0 = Math.max(0, Math.round(l / scale)), y0 = Math.max(0, Math.round(t / scale));
         int x1 = Math.min(picture.getWidth(), Math.round(r / scale));
         int y1 = Math.min(picture.getHeight(), Math.round(b / scale));
         int n = 0;
-        for (int y = y0; y < y1; y += 2) {
-            for (int x = x0; x < x1; x += 2) {
-                if (PeacockPilot.isYellow(picture.getPixel(x, y))) n++;
+        for (int y = y0; y < y1; y++) {
+            for (int x = x0; x < x1; x++) {
+                int c = picture.getPixel(x, y);
+                if (yellow ? Pilot.isYellow(c) : Pilot.isWhite(c)) n++;
             }
         }
-        return Math.round(n * 4 * scale * scale); // back to 1080p pixels
+        return Math.round(n * scale * scale); // back to 1080p pixels
     }
 
     /** Presses the remote's OK for him, then waits for the app before reading the screen again. */

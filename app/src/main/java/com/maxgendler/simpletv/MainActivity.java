@@ -502,6 +502,11 @@ public class MainActivity extends Activity {
                 AutoTuneService.startGuide(guideSteps(app, team).steerPeacock());
                 return;
             }
+            // Same for DAZN (MSG+ Knicks games): its links all land on its home page
+            if (app == Config.DAZN && AutoTuneService.isEnabled(this) && AppLauncher.launchFresh(this, app)) {
+                AutoTuneService.startGuide(guideSteps(app, team).steerDazn());
+                return;
+            }
             if (AppLauncher.launch(this, app)) {
                 AutoTuneService.startGuide(guideSteps(app, team));
                 return;

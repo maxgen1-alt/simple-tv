@@ -61,6 +61,7 @@ public class SettingsActivity extends Activity {
         homeButton = button("", v -> toggleHomeScreen());
         col.addView(button("Photo album link", v -> editAlbumLink()), buttonParams());
         col.addView(button("Test Peacock Chelsea game (helper drives)", v -> testGuide()), buttonParams());
+        col.addView(button("Test DAZN " + DAZN_TEST_TEAM + " game (helper drives)", v -> testDazn()), buttonParams());
         col.addView(button("Test Prime game (today's listed game)", v -> testPrime()), buttonParams());
         col.addView(button("Android settings", v -> open(new Intent(Settings.ACTION_SETTINGS))), buttonParams());
         col.addView(button("Accessibility (eTVnet helper)",
@@ -208,6 +209,24 @@ public class SettingsActivity extends Activity {
             AutoTuneService.startGuide(MainActivity.guideSteps(Config.PEACOCK, Config.CHELSEA).steerPeacock());
         } else {
             status.setText("Peacock isn't installed.");
+        }
+    }
+
+    /** Which team the DAZN test looks for (any team with a live game on DAZN's home works). */
+    private static final String DAZN_TEST_TEAM = "devils";
+
+    /** Same as the Knicks button on a DAZN (MSG+) game day: the helper drives DAZN to the live game. */
+    private void testDazn() {
+        if (!AutoTuneService.isEnabled(this)) {
+            status.setText("Switch on the eTVnet helper first (Accessibility). It also drives DAZN.");
+            return;
+        }
+        if (AppLauncher.launchFresh(this, Config.DAZN)) {
+            AutoTuneService.startGuide(new AutoTuneService.Guide(null,
+                    "Найдите игру «" + DAZN_TEST_TEAM + "» и нажмите круглую кнопку ◉",
+                    "Нажмите «Join live» — игра начнётся", DAZN_TEST_TEAM, DAZN_TEST_TEAM, null).steerDazn());
+        } else {
+            status.setText("DAZN isn't installed.");
         }
     }
 
