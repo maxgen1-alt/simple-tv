@@ -60,6 +60,7 @@ public class MainActivity extends Activity {
                 t.update();
                 t.store.refreshIfStale(t::update);
             }
+            PrimeGames.refreshIfStale(MainActivity.this);
             handler.postDelayed(this, 30_000);
         }
     };
@@ -471,6 +472,12 @@ public class MainActivity extends Activity {
             if (AppLauncher.openLink(this, Config.CABLE, Schedule.cableLink(s.game))) return;
             // 2. Otherwise open the app that has the game, with the step-by-step banner on top.
             Config.Target app = targetForKey(s.game.targetKey);
+            // Prime game with its link listed: straight to the game's page, and the helper presses OK
+            if (app == Config.PRIME
+                    && AppLauncher.openLink(this, app, PrimeGames.linkFor(this, s.game.tipMs))) {
+                AutoTuneService.startGuide(guideSteps(app, team).pressForHim());
+                return;
+            }
             if (AppLauncher.launch(this, app)) {
                 AutoTuneService.startGuide(guideSteps(app, team));
                 return;
@@ -496,7 +503,8 @@ public class MainActivity extends Activity {
         if (app == Config.PRIME || app == Config.PARAMOUNT) profile = Config.PRIME_PROFILE; // Paramount+ is inside Prime
         String pick = profile == null ? null : "Выберите «" + profile + "» и нажмите ОК";
         // team.key ("knicks" / "chelsea") is how the team's name reads on the apps' English screens
-        return new AutoTuneService.Guide(pick, find, watch, team.key, team.ruName);
+        return new AutoTuneService.Guide(pick, find, watch, team.key, team.ruName,
+                profile == null ? null : profile.toLowerCase(Locale.ROOT));
     }
 
     private void openChannel(Config.Channel ch) {

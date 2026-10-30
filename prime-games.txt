@@ -1,0 +1,4 @@
+# Knicks / Chelsea games on Prime Video: one per line, the date (New York time) then the game's Prime link.
+# Get the link: Prime Video app on your phone -> open the game -> Share -> Copy link.
+# The TV checks this list every half hour, so no app update is needed. Old lines can stay.
+2026-10-30 https://www.primevideo.com/detail/B0HF4WFF3Y

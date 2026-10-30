@@ -57,6 +57,7 @@ public class SettingsActivity extends Activity {
         col.addView(updateButton, buttonParams());
         col.addView(button("Photo album link", v -> editAlbumLink()), buttonParams());
         col.addView(button("Test game banner (opens Peacock)", v -> testGuide()), buttonParams());
+        col.addView(button("Test Prime game (today's listed game)", v -> testPrime()), buttonParams());
         col.addView(button("Android settings", v -> open(new Intent(Settings.ACTION_SETTINGS))), buttonParams());
         col.addView(button("Accessibility (eTVnet helper)",
                 v -> open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))), buttonParams());
@@ -68,6 +69,7 @@ public class SettingsActivity extends Activity {
         setContentView(scroll);
         updateButton.requestFocus();
         check();
+        PrimeGames.refreshIfStale(this);
     }
 
     @Override
@@ -149,6 +151,22 @@ public class SettingsActivity extends Activity {
             AutoTuneService.startGuide(MainActivity.guideSteps(Config.PEACOCK, Config.KNICKS));
         } else {
             status.setText("Peacock isn't installed.");
+        }
+    }
+
+    /** Same as the Knicks button on a Prime game day: today's game from prime-games.txt, OK pressed for him. */
+    private void testPrime() {
+        if (!AutoTuneService.isEnabled(this)) {
+            status.setText("Switch on the eTVnet helper first (Accessibility). It also presses OK in Prime.");
+            return;
+        }
+        String link = PrimeGames.linkFor(this, System.currentTimeMillis());
+        if (link == null) {
+            status.setText("No Prime game listed for today in prime-games.txt (the list refreshes every 30 min).");
+        } else if (AppLauncher.openLink(this, Config.PRIME, link)) {
+            AutoTuneService.startGuide(MainActivity.guideSteps(Config.PRIME, Config.KNICKS).pressForHim());
+        } else {
+            status.setText("Prime Video isn't installed.");
         }
     }
 

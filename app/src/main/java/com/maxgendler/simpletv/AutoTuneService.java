@@ -111,13 +111,26 @@ public class AutoTuneService extends AccessibilityService {
     /** What to show for one app: the profile step is null when the app has no profile screen. */
     static final class Guide {
         final String profile, find, watch, teamWord, teamRu;
+        final String profileWord; // the profile's name as it reads on screen ("alik"), or null
+        boolean pressForHim;
 
-        Guide(String profile, String find, String watch, String teamWord, String teamRu) {
+        Guide(String profile, String find, String watch, String teamWord, String teamRu, String profileWord) {
             this.profile = profile;
             this.find = find;
             this.watch = watch;
             this.teamWord = teamWord;
             this.teamRu = teamRu;
+            this.profileWord = profileWord;
+        }
+
+        /**
+         * The app was opened right on the game's page (Prime game link), so the helper presses OK for
+         * him: once on the profile list, once on "Watch Live". Prime hides its buttons from helpers,
+         * but the remote's OK can be sent (Android 13+), and it lands on the highlighted button.
+         */
+        Guide pressForHim() {
+            pressForHim = true;
+            return this;
         }
     }
 
@@ -129,14 +142,18 @@ public class AutoTuneService extends AccessibilityService {
     private static final long READ_EVERY_MS = 2000;
     private static final Pattern WATCH_BUTTON =
             Pattern.compile("\\b(watch|watch live|watch now|play|resume|start over)\\b");
+    /** The game page's play button once the game is on ("Watch Live: 7:00 PM EDT" = not started yet). */
+    private static final Pattern WATCH_LIVE_NOW = Pattern.compile("\\bwatch live\\b(?!\\s*:)");
+    /** After the helper presses OK, show "please wait" this long before telling him what to press. */
+    private static final long AUTO_WAIT_MS = 12_000;
     private static volatile AutoTuneService instance;
 
     private TextView banner;
     private Guide guide;
     private Stage stage;
     private int okPresses, playingSeconds;
-    private boolean sawWatch, screenBlank, readerWorks, reading;
-    private long guideUntil, wrongShowUntil, lastRead;
+    private boolean sawWatch, screenBlank, readerWorks, reading, pressedProfile, pressedWatch;
+    private long guideUntil, wrongShowUntil, lastRead, autoWaitUntil;
     private TextRecognizer reader;
     private final Runnable guideTick = this::guideTick;
 
@@ -173,7 +190,10 @@ public class AutoTuneService extends AccessibilityService {
         screenBlank = false;
         readerWorks = false;
         wrongShowUntil = 0;
+        pressedProfile = false;
+        pressedWatch = false;
         guideUntil = System.currentTimeMillis() + GUIDE_MAX_MS;
+        autoWaitUntil = canPressForHim() ? System.currentTimeMillis() + AUTO_WAIT_MS : 0;
 
         banner = new TextView(this);
         banner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 34);
@@ -211,6 +231,10 @@ public class AutoTuneService extends AccessibilityService {
         if (banner == null) return;
         if (stage == Stage.WRONG_SHOW) {
             banner.setText("Если это не игра «" + guide.teamRu + "» — нажмите НАЗАД");
+            return;
+        }
+        if (System.currentTimeMillis() < autoWaitUntil) {
+            banner.setText("Включаю игру «" + guide.teamRu + "»… подождите");
             return;
         }
         int total = guide.profile != null ? 3 : 2;
@@ -264,6 +288,7 @@ public class AutoTuneService extends AccessibilityService {
             wrongShowUntil = now + WRONG_SHOW_MS;
             showStepText();
         }
+        if (guide.pressForHim) showStepText(); // "please wait" ends on time even if nothing changes
         handler.postDelayed(guideTick, 1000);
     }
 
@@ -332,13 +357,51 @@ public class AutoTuneService extends AccessibilityService {
         screenBlank = words.trim().length() < 12; // a protected, playing video reads as (almost) nothing
         if (screenBlank || stage == Stage.WRONG_SHOW) return;
         if (words.contains("who's watching") || words.contains("who is watching")
-                || words.contains("choose profile") || words.contains("select profile")) {
+                || words.contains("choose profile") || words.contains("select profile")
+                // Prime's profile list has no heading, just the names
+                || (guide.pressForHim && guide.profileWord != null
+                    && words.contains(guide.profileWord) && !words.contains(guide.teamWord))) {
             setStage(Stage.PROFILE);
         } else if (words.contains(guide.teamWord) && WATCH_BUTTON.matcher(words).find()) {
             setStage(Stage.WATCH);
         } else {
             setStage(Stage.FIND);
         }
+        if (!canPressForHim()) return;
+        if (stage == Stage.PROFILE && !pressedProfile) {
+            // The last-used profile (his) is already highlighted; any profile would still play the game
+            pressedProfile = true;
+            pressOk();
+        } else if (stage == Stage.WATCH && !pressedWatch && WATCH_LIVE_NOW.matcher(words).find()
+                && isTeamGamePage(words)) {
+            // "Watch Live" is the first, highlighted button on the game's page
+            pressedWatch = true;
+            pressOk();
+        }
+    }
+
+    /** The page is about his team's game ("Knicks vs. 76ers" / "76ers vs. Knicks"), not a list of shows. */
+    private boolean isTeamGamePage(String words) {
+        String t = guide.teamWord;
+        return words.contains(t + " vs") || words.contains("vs. " + t) || words.contains("vs " + t)
+                || words.contains(t + " at ") || words.contains(" at " + t) || words.contains("@ " + t);
+    }
+
+    private boolean canPressForHim() {
+        return guide != null && guide.pressForHim && Build.VERSION.SDK_INT >= 33;
+    }
+
+    /** Presses the remote's OK for him, then waits for the app before reading the screen again. */
+    private void pressOk() {
+        autoWaitUntil = System.currentTimeMillis() + AUTO_WAIT_MS;
+        lastRead = System.currentTimeMillis() + 1500;
+        showStepText();
+        handler.postDelayed(() -> {
+            if (banner != null && Build.VERSION.SDK_INT >= 33) {
+                Log.i(TAG, "pressing OK for him (" + stage + ")");
+                performGlobalAction(GLOBAL_ACTION_DPAD_CENTER);
+            }
+        }, 800);
     }
 
     /**
