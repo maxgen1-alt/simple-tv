@@ -15,6 +15,11 @@ android {
         applicationId 'com.maxgendler.simpletv'
         minSdk 26
         targetSdk 34
+        // Google TV sticks (ONN, Chromecast) use ARM chips; skipping the other chip types keeps
+        // the screen-reading library from tripling the app's size
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
         // GitHub builds count up (build 25 -> versionCode 125), so updates always look newer
         def run = (System.getenv('VERSION_CODE') ?: '0').toInteger()
         versionCode run + 100
