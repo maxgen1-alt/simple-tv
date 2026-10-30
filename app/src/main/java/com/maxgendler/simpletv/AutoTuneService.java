@@ -32,7 +32,10 @@ import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -40,7 +43,7 @@ import java.util.regex.Pattern;
  * eTVnet has no links to its channels, so this presses the buttons for them:
  * opens "Прямой эфир" (Live), scrolls the channel row until it finds the channel by name, and clicks it.
  *
- * Only watches the eTVnet app, and only acts for ~25 seconds after one of our channel buttons is pressed.
+ * Only watches eTVnet and DAZN, and only acts for a short while after one of our buttons is pressed.
  * Also shows the step-by-step game banner over Prime / Peacock / DAZN (see "game guide banner").
  * Must be switched on once: Settings → System → Accessibility → Простой ТВ.
  */
@@ -99,7 +102,7 @@ public class AutoTuneService extends AccessibilityService {
 
     // ---------------------------------------------------------------- game guide banner
     //
-    // Prime / Peacock / DAZN hide their screens from helpers, so we can't press things in them. Instead,
+    // Prime / Peacock hide their screens from helpers, so we can't press things in them (DAZN: see below). Instead,
     // a big banner sits on top of the app and tells Grandpa what to press. Every 2 seconds the helper
     // takes a picture of the screen and reads its English words (on-device, nothing leaves the stick):
     //   "Who's watching?"            -> pick the profile
@@ -160,6 +163,7 @@ public class AutoTuneService extends AccessibilityService {
 
     static void stopGuide() {
         AutoTuneService s = instance;
+        daznTeam = null; // back home: stop pressing things in DAZN too
         if (s != null) s.handler.post(s::hideGuide);
     }
 
@@ -209,6 +213,10 @@ public class AutoTuneService extends AccessibilityService {
 
     private void showStepText() {
         if (banner == null) return;
+        if (daznTeam != null) {
+            banner.setText("Включаю игру «" + guide.teamRu + "»… подождите");
+            return;
+        }
         if (stage == Stage.WRONG_SHOW) {
             banner.setText("Если это не игра «" + guide.teamRu + "» — нажмите НАЗАД");
             return;
@@ -350,6 +358,7 @@ public class AutoTuneService extends AccessibilityService {
         if (banner != null && event.getAction() == KeyEvent.ACTION_UP) {
             int k = event.getKeyCode();
             if (k == KeyEvent.KEYCODE_HOME) {
+                daznTeam = null;
                 hideGuide();
                 return false;
             }
@@ -370,6 +379,172 @@ public class AutoTuneService extends AccessibilityService {
             lastRead = 0; // look again right away
         }
         return false; // the key still goes to the app as normal
+    }
+
+    // ---------------------------------------------------------------- DAZN: pick the game for him
+    //
+    // Unlike Prime / Peacock, DAZN's screens can be read: every game is a button named like
+    // "Nets @ Knicks (MSG Broadcast)". So the helper opens the MSG+ page, presses the team's game under
+    // "Live and Coming Up", then presses the play option ("Watch live", "Full Replay", ...). The banner
+    // says "please wait" meanwhile; if anything goes wrong it falls back to the normal steps.
+
+    private static final long DAZN_GIVE_UP_MS = 45_000;
+    private static final long DAZN_STEP_MS = 1500;
+    private static final Pattern PLAY_OPTION = Pattern.compile(
+            "^(watch live|live|watch now|watch|play|resume|full replay|start over|watch from (the )?(start|beginning))\\b");
+
+    private static volatile String daznTeam;   // e.g. "knicks" while picking; null otherwise
+    private static volatile boolean daznReplayOk;
+    private static volatile long daznUntil;
+    private boolean daznGameOpened;
+    private int daznRailClicks;
+    private final Set<String> playOptionsBefore = new HashSet<>();
+    private final Runnable daznStep = this::daznStep;
+
+    /**
+     * Call right before opening DAZN. replayOk = if there's no live/upcoming game, a replay will do
+     * (only for testing from Settings; on game day it would be the wrong game).
+     */
+    static void pickDaznGame(String teamWord, boolean replayOk) {
+        daznTeam = teamWord.toLowerCase(Locale.ROOT);
+        daznReplayOk = replayOk;
+        daznUntil = System.currentTimeMillis() + DAZN_GIVE_UP_MS;
+        AutoTuneService s = instance;
+        if (s != null) s.handler.post(() -> {
+            s.daznGameOpened = false;
+            s.daznRailClicks = 0;
+            s.playOptionsBefore.clear();
+            s.handler.removeCallbacks(s.daznStep);
+            s.handler.postDelayed(s.daznStep, 3000); // let DAZN open first
+        });
+    }
+
+    private void daznStep() {
+        String team = daznTeam;
+        if (team == null) return;
+        if (System.currentTimeMillis() > daznUntil) {
+            daznDone(false);
+            return;
+        }
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root != null && Config.DAZN.packages[0].equals(String.valueOf(root.getPackageName()))) {
+            List<AccessibilityNodeInfo> nodes = new ArrayList<>();
+            flatten(root, nodes);
+            if (daznGameOpened) {
+                AccessibilityNodeInfo play = newPlayOption(nodes);
+                if (play != null) {
+                    Log.i(TAG, "DAZN: pressing " + play.getText());
+                    press(play);
+                    daznDone(true);
+                    return;
+                }
+            } else {
+                AccessibilityNodeInfo game = teamGame(nodes, team);
+                if (game != null) {
+                    // Remember the play buttons already showing (the page's big "Watch now" is for
+                    // another game), so only the ones that appear for his game get pressed.
+                    for (AccessibilityNodeInfo n : nodes) {
+                        if (isPlayOption(n)) playOptionsBefore.add(key(n));
+                    }
+                    Log.i(TAG, "DAZN: opening " + game.getText());
+                    press(game);
+                    daznGameOpened = true;
+                } else if (!has(nodes, "live and coming up") && daznRailClicks++ < 3) {
+                    // Not on the MSG+ page yet: press MSG+ in the menu on the left
+                    for (AccessibilityNodeInfo n : nodes) {
+                        if (n.isClickable() && matches(n.getText(), "MSG+")) {
+                            Log.i(TAG, "DAZN: opening MSG+");
+                            press(n);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        handler.postDelayed(daznStep, DAZN_STEP_MS);
+    }
+
+    /** Picking is over: on success the game is starting; otherwise the banner shows the normal steps. */
+    private void daznDone(boolean started) {
+        daznTeam = null;
+        handler.removeCallbacks(daznStep);
+        if (banner == null) return;
+        if (started) {
+            setStage(Stage.WATCH); // counts as "he pressed Watch on the team's game"
+            banner.setText("Игра «" + guide.teamRu + "» начинается…");
+        } else {
+            showStepText();
+        }
+    }
+
+    /**
+     * The team's game button: under "Live and Coming Up" first (preferring the MSG broadcast, since
+     * the YES one may be locked), else a replay if allowed.
+     */
+    private static AccessibilityNodeInfo teamGame(List<AccessibilityNodeInfo> nodes, String team) {
+        List<AccessibilityNodeInfo> live = new ArrayList<>(), other = new ArrayList<>();
+        boolean inLive = false;
+        for (AccessibilityNodeInfo n : nodes) {
+            String label = lower(n.getContentDescription()) + " " + lower(n.getText());
+            if (label.contains("live and coming up")) inLive = true;
+            else if (label.contains("full replays") || label.contains("best of")) inLive = false;
+            String text = lower(n.getText());
+            if (!n.isClickable() || !text.contains(team) || !text.contains(" @ ")) continue;
+            (inLive ? live : other).add(n);
+        }
+        AccessibilityNodeInfo pick = bestBroadcast(live);
+        return pick != null || !daznReplayOk ? pick : bestBroadcast(other);
+    }
+
+    private static AccessibilityNodeInfo bestBroadcast(List<AccessibilityNodeInfo> games) {
+        for (AccessibilityNodeInfo g : games) if (lower(g.getText()).contains("msg broadcast")) return g;
+        for (AccessibilityNodeInfo g : games) if (!lower(g.getText()).contains("yes broadcast")) return g;
+        return games.isEmpty() ? null : games.get(0);
+    }
+
+    /** A play button that wasn't there before his game was opened; "live" ones first. */
+    private AccessibilityNodeInfo newPlayOption(List<AccessibilityNodeInfo> nodes) {
+        AccessibilityNodeInfo first = null;
+        for (AccessibilityNodeInfo n : nodes) {
+            if (!isPlayOption(n) || playOptionsBefore.contains(key(n))) continue;
+            if (lower(n.getText()).contains("live")) return n;
+            if (first == null) first = n;
+        }
+        return first;
+    }
+
+    private static boolean isPlayOption(AccessibilityNodeInfo n) {
+        return n.isClickable() && PLAY_OPTION.matcher(lower(n.getText())).find();
+    }
+
+    private static String key(AccessibilityNodeInfo n) {
+        Rect r = new Rect();
+        n.getBoundsInScreen(r);
+        return lower(n.getText()) + r.toShortString();
+    }
+
+    private static boolean has(List<AccessibilityNodeInfo> nodes, String words) {
+        for (AccessibilityNodeInfo n : nodes) {
+            if ((lower(n.getContentDescription()) + " " + lower(n.getText())).contains(words)) return true;
+        }
+        return false;
+    }
+
+    /** Moves the highlight onto it (like the remote would), then presses it. */
+    private static void press(AccessibilityNodeInfo n) {
+        n.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
+        n.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+    }
+
+    /** Every node on screen, top to bottom in reading order. */
+    private static void flatten(AccessibilityNodeInfo node, List<AccessibilityNodeInfo> out) {
+        if (node == null) return;
+        out.add(node);
+        for (int i = 0; i < node.getChildCount(); i++) flatten(node.getChild(i), out);
+    }
+
+    private static String lower(CharSequence s) {
+        return s == null ? "" : s.toString().trim().toLowerCase(Locale.ROOT);
     }
 
     private void step() {

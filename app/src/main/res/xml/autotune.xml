@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Reads eTVnet to click through to channels. While the game banner is shown over Prime / Peacock /
+<!-- Reads eTVnet to click through to channels, and DAZN to press the game. While the game banner is shown over Prime / Peacock /
      DAZN it also notices (never blocks) remote presses and reads the screen's words on the device. -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
@@ -10,4 +10,4 @@
     android:canTakeScreenshot="true"
     android:description="@string/autotune_description"
     android:notificationTimeout="300"
-    android:packageNames="com.etvnet.androidtv.tvstore" />
+    android:packageNames="com.etvnet.androidtv.tvstore,com.dazn" />

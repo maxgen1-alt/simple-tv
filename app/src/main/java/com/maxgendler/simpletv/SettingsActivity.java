@@ -56,6 +56,7 @@ public class SettingsActivity extends Activity {
         col.addView(updateButton, buttonParams());
         col.addView(button("Photo album link", v -> editAlbumLink()), buttonParams());
         col.addView(button("Test game banner (opens Peacock)", v -> testGuide()), buttonParams());
+        col.addView(button("Test DAZN Knicks (plays a replay if no game)", v -> testDazn()), buttonParams());
         col.addView(button("Android settings", v -> open(new Intent(Settings.ACTION_SETTINGS))), buttonParams());
         col.addView(button("Accessibility (eTVnet helper)",
                 v -> open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))), buttonParams());
@@ -145,6 +146,21 @@ public class SettingsActivity extends Activity {
             AutoTuneService.startGuide(MainActivity.guideSteps(Config.PEACOCK, Config.KNICKS));
         } else {
             status.setText("Peacock isn't installed.");
+        }
+    }
+
+    /** Same as the Knicks button on a DAZN game day, but falls back to a Knicks replay when no game is on. */
+    private void testDazn() {
+        if (!AutoTuneService.isEnabled(this)) {
+            status.setText("Switch on the eTVnet helper first (Accessibility). It also picks the DAZN game.");
+            return;
+        }
+        AutoTuneService.pickDaznGame(Config.KNICKS.key, true);
+        if (AppLauncher.launchFresh(this, Config.DAZN)) {
+            AutoTuneService.startGuide(MainActivity.guideSteps(Config.DAZN, Config.KNICKS));
+        } else {
+            AutoTuneService.stopGuide();
+            status.setText("DAZN isn't installed.");
         }
     }
 
