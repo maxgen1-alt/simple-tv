@@ -58,8 +58,50 @@ public class AutoTuneService extends AccessibilityService {
         return false;
     }
 
+    // ---- TEMPORARY: report what Peacock / Prime screens look like to the helper (adb logcat -s AutoTuneScan) ----
+    private static final String SCAN_TAG = "AutoTuneScan";
+    private final Runnable scan = this::scanScreen;
+
+    private void scanScreen() {
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) {
+            Log.i(SCAN_TAG, "root=null (screen hidden from helpers)");
+            return;
+        }
+        String pkg = String.valueOf(root.getPackageName());
+        if (pkg.equals(Config.ETVNET.packages[0]) || pkg.equals(getPackageName())) return;
+        StringBuilder out = new StringBuilder();
+        int[] count = {0, 0};
+        walk(root, 0, out, count);
+        Log.i(SCAN_TAG, "=== " + pkg + " nodes=" + count[0] + " labeled=" + count[1]);
+        for (String line : out.toString().split("\n")) if (!line.isEmpty()) Log.i(SCAN_TAG, line);
+    }
+
+    private static void walk(AccessibilityNodeInfo n, int depth, StringBuilder out, int[] count) {
+        if (n == null || count[0] > 600) return;
+        count[0]++;
+        CharSequence t = n.getText(), d = n.getContentDescription();
+        if ((t != null && t.length() > 0) || (d != null && d.length() > 0)) {
+            count[1]++;
+            if (count[1] <= 120) {
+                String cls = String.valueOf(n.getClassName()).replaceAll(".*\\.", "");
+                out.append(depth).append(' ').append(cls)
+                   .append(n.isClickable() ? " [click]" : "").append(n.isFocusable() ? " [focus]" : "")
+                   .append(n.isFocused() ? " [FOCUSED]" : "")
+                   .append(" text=").append(t).append(" desc=").append(d).append('\n');
+            }
+        }
+        for (int i = 0; i < n.getChildCount(); i++) walk(n.getChild(i), depth + 1, out, count);
+    }
+
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        CharSequence evPkg = event.getPackageName();
+        if (evPkg != null && !evPkg.toString().equals(Config.ETVNET.packages[0])) {
+            handler.removeCallbacks(scan);
+            handler.postDelayed(scan, 1500); // once the screen settles
+            return;
+        }
         if (pendingName == null) return;
         if (System.currentTimeMillis() > pendingUntil) {
             pendingName = null;
