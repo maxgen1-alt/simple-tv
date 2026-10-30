@@ -139,7 +139,8 @@ final class Config {
     static final Channel[] CHANNELS = {
             // (ABC has no button anymore, but ABC_LINK still sends Knicks/Chelsea games on ABC there)
             Channel.cable("КАНАЛ", "4", NBC_LINK).logo("NBC logo 2022.svg").onTop(),
-            Channel.etvnet("МАТЧ! АРЕНА", "Матч! Арена HD").inRow("Спортивные")
+            // Label is what Grandpa calls it ("Sport Program"); the tile still shows the channel's logo
+            Channel.etvnet("СПОРТИВНАЯ ПРОГРАММА", "Матч! Арена HD").inRow("Спортивные")
                    .ruWikiLogo("Матч! Арена.png").onTop(),                               // channel 305
             // Names exactly as eTVnet shows them in its "Центральные" row
             Channel.etvnet("RTVI", "RTVI US").logo("RTVI Logo magenta fill 2021.png"),     // channel 8

@@ -301,13 +301,17 @@ public class MainActivity extends Activity {
             panel.setVisibility(View.GONE);
             content.addView(panel, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
+            // Long two-word names ("СПОРТИВНАЯ ПРОГРАММА") go on two lines so they stay big enough to read
+            String label = ch.ruTop.isEmpty() ? ch.ruBig : ch.ruTop + " " + ch.ruBig;
+            boolean twoLines = label.length() > 14 && label.contains(" ");
             caption = text(22, Color.WHITE, true);
             caption.setGravity(Gravity.CENTER);
-            caption.setMaxLines(1);
+            caption.setMaxLines(twoLines ? 2 : 1);
             caption.setAutoSizeTextTypeUniformWithConfiguration(9, 22, 1, TypedValue.COMPLEX_UNIT_SP);
-            caption.setText(ch.ruTop.isEmpty() ? ch.ruBig : ch.ruTop + " " + ch.ruBig);
+            caption.setText(twoLines ? label.replaceFirst(" ", "\n") : label);
             caption.setVisibility(View.GONE);
-            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30));
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(twoLines ? 56 : 30));
             cp.topMargin = dp(10);
             content.addView(caption, cp);
         }
