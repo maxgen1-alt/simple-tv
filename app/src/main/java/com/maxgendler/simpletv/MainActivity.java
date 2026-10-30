@@ -83,6 +83,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        AutoTuneService.stopGuide(); // back home: no game banner
         hideSystemBars();
         refreshInstalled();
         for (TeamTile t : teams()) t.update();
@@ -468,15 +469,36 @@ public class MainActivity extends Activity {
         if (s.gameOn() && s.game != null) {
             // 1. Game is on a channel the cable app has a link for: straight to the channel.
             if (AppLauncher.openLink(this, Config.CABLE, Schedule.cableLink(s.game))) return;
-            // 2. Otherwise open the app that has the game.
-            if (AppLauncher.launch(this, targetForKey(s.game.targetKey))) return;
+            // 2. Otherwise open the app that has the game, with the step-by-step banner on top.
+            Config.Target app = targetForKey(s.game.targetKey);
+            if (AppLauncher.launch(this, app)) {
+                AutoTuneService.startGuide(guideSteps(app, team));
+                return;
+            }
             // 3. That app isn't installed: try the team's everyday app.
-            if (team.fallback != null && AppLauncher.launch(this, team.fallback)) return;
+            if (team.fallback != null && AppLauncher.launch(this, team.fallback)) {
+                AutoTuneService.startGuide(guideSteps(team.fallback, team));
+                return;
+            }
             showMessage(CANT_OPEN);
             return;
         }
 
         showInfo(s.game != null ? nextGameSentence(s.game.tipMs) : "Сегодня игры нет.");
+    }
+
+    /** What the banner tells Grandpa to press in each app, one step per OK press. */
+    static String[] guideSteps(Config.Target app, Config.Team team) {
+        String game = "Найдите игру «" + team.ruName + "» и нажмите ОК";
+        String watch = "Нажмите «Watch» (Смотреть) — игра начнётся";
+        if (app == Config.PEACOCK) {
+            return new String[]{"Выберите «" + Config.PEACOCK_PROFILE + "» и нажмите ОК", game, watch};
+        }
+        if (app == Config.PRIME || app == Config.PARAMOUNT) { // Paramount+ opens inside Prime
+            return new String[]{"Выберите «" + Config.PRIME_PROFILE + "» и нажмите ОК", game, watch};
+        }
+        if (app == Config.CABLE) return new String[]{game};
+        return new String[]{game, watch}; // DAZN, ESPN
     }
 
     private void openChannel(Config.Channel ch) {

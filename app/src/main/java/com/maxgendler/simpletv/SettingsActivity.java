@@ -55,6 +55,7 @@ public class SettingsActivity extends Activity {
         updateButton = button("Check for updates", v -> onUpdatePressed());
         col.addView(updateButton, buttonParams());
         col.addView(button("Photo album link", v -> editAlbumLink()), buttonParams());
+        col.addView(button("Test game banner (opens Peacock)", v -> testGuide()), buttonParams());
         col.addView(button("Android settings", v -> open(new Intent(Settings.ACTION_SETTINGS))), buttonParams());
         col.addView(button("Accessibility (eTVnet helper)",
                 v -> open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))), buttonParams());
@@ -132,6 +133,19 @@ public class SettingsActivity extends Activity {
                         ? "Album link saved." : "That isn't a Google Photos share link. Nothing saved."))
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    /** Opens Peacock with the Knicks game banner on top, exactly like the Knicks button during a game. */
+    private void testGuide() {
+        if (!AutoTuneService.isEnabled(this)) {
+            status.setText("Switch on the eTVnet helper first (Accessibility). It also shows the banner.");
+            return;
+        }
+        if (AppLauncher.launch(this, Config.PEACOCK)) {
+            AutoTuneService.startGuide(MainActivity.guideSteps(Config.PEACOCK, Config.KNICKS));
+        } else {
+            status.setText("Peacock isn't installed.");
+        }
     }
 
     private void open(Intent i) {

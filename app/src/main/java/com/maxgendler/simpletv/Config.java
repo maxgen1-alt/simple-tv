@@ -63,6 +63,10 @@ final class Config {
             new String[]{"com.etvnet.androidtv.tvstore"},
             new String[]{"etvnet"});
 
+    /** Which profile to pick on each app's "Who's watching?" screen (shown on the game banner). */
+    static final String PRIME_PROFILE = "Alik";
+    static final String PEACOCK_PROFILE = "Alik";
+
     static final Target[] ALL_TARGETS = {PRIME, PEACOCK, PARAMOUNT, DAZN, ESPN, CABLE, ETVNET};
 
     // ---- Channel buttons (tiles 3 to 6) ----
