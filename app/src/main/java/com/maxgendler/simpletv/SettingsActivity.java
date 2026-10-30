@@ -4,7 +4,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.text.InputType;
 import android.widget.EditText;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -26,7 +28,7 @@ public class SettingsActivity extends Activity {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private TextView helper, status;
-    private TextView updateButton;
+    private TextView updateButton, homeButton;
     private Updater.Latest latest;
 
     @Override
@@ -55,6 +57,8 @@ public class SettingsActivity extends Activity {
 
         updateButton = button("Check for updates", v -> onUpdatePressed());
         col.addView(updateButton, buttonParams());
+        homeButton = button("", v -> toggleHomeScreen());
+        col.addView(homeButton, buttonParams());
         col.addView(button("Photo album link", v -> editAlbumLink()), buttonParams());
         col.addView(button("Test game banner (opens Peacock)", v -> testGuide()), buttonParams());
         col.addView(button("Test Prime game (today's listed game)", v -> testPrime()), buttonParams());
@@ -77,6 +81,36 @@ public class SettingsActivity extends Activity {
         super.onResume();
         helper.setText("eTVnet helper: " + (AutoTuneService.isEnabled(this)
                 ? "on" : "OFF (the eTVnet channel buttons won't open their channel)"));
+        showHomeScreenState();
+    }
+
+    /**
+     * Makes Simple TV a home screen (or stops it). Android 14 won't let a computer (adb) switch this
+     * on, but an app may switch its own. Do this BEFORE turning Google TV's home screen off, or the
+     * stick is left with no home screen at all (a black screen).
+     */
+    private void toggleHomeScreen() {
+        boolean on = isHomeScreen();
+        getPackageManager().setComponentEnabledSetting(homeAlias(),
+                on ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED : PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                PackageManager.DONT_KILL_APP);
+        showHomeScreenState();
+        status.setText(on ? "Simple TV is no longer a home screen. Turn Google TV's back on first if it's off!"
+                          : "Simple TV is now a home screen. Now Google TV's can be switched off.");
+    }
+
+    private void showHomeScreenState() {
+        homeButton.setText(isHomeScreen() ? "Home screen: Simple TV is ON (press to turn off)"
+                                          : "Make Simple TV the home screen");
+    }
+
+    private boolean isHomeScreen() {
+        return getPackageManager().getComponentEnabledSetting(homeAlias())
+                == PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
+    }
+
+    private ComponentName homeAlias() {
+        return new ComponentName(this, getPackageName() + ".HomeScreen");
     }
 
     private void check() {

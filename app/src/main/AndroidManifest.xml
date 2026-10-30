@@ -63,8 +63,8 @@
         <!--
             Makes this THE home screen (what the Home button opens).
             OFF by default, so installing on your own Chromecast never touches your home screen.
-            Turn on for their stick only:
-              adb shell pm enable com.maxgendler.simpletv/.HomeScreen
+            Turn on for their stick only, from the app: gear → "Make Simple TV the home screen"
+            (Android 14 refuses "adb shell pm enable" for this). Only then switch Google TV's off.
         -->
         <activity-alias
             android:name=".HomeScreen"
