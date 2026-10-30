@@ -24,7 +24,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-/** Max's settings screen (behind the small gear): updates and Android settings. In English on purpose. */
+/** Max's settings screen (home screen: Up 5 times, then Left 5 times): updates and Android settings. In English on purpose. */
 public class SettingsActivity extends Activity {
 
     private final Handler main = new Handler(Looper.getMainLooper());

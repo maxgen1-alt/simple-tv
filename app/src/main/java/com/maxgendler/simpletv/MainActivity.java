@@ -55,7 +55,7 @@ public class MainActivity extends Activity {
     private TeamTile knicks, chelsea;
     private ChannelTile[] channelTiles;
     private Tile firstTile;
-    private int upPresses = 0;
+    private int secretPos = 0; // how far into the secret settings key pattern
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
@@ -118,19 +118,20 @@ public class MainActivity extends Activity {
         // intentionally empty
     }
 
+    /** Watches for the secret key pattern (Config.SECRET_KEYS) that opens Simple TV settings. */
     @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            upPresses++;
-            if (upPresses >= Config.ADMIN_UP_PRESSES) {
-                upPresses = 0;
-                openAndroidSettings();
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+            int k = event.getKeyCode();
+            int[] secret = Config.SECRET_KEYS;
+            secretPos = k == secret[secretPos] ? secretPos + 1 : (k == secret[0] ? 1 : 0);
+            if (secretPos == secret.length) {
+                secretPos = 0;
+                startActivity(new Intent(this, SettingsActivity.class));
                 return true;
             }
-        } else {
-            upPresses = 0;
         }
-        return super.onKeyDown(keyCode, event);
+        return super.dispatchKeyEvent(event);
     }
 
     // ---------------------------------------------------------------- building the screen
@@ -158,7 +159,6 @@ public class MainActivity extends Activity {
         clock.addView(weatherView);
         clock.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         clock.addView(timeView);
-        clock.addView(settingsGear(), new LinearLayout.LayoutParams(dp(36), dp(36)));
         column.addView(clock, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
@@ -177,8 +177,15 @@ public class MainActivity extends Activity {
             channelTiles[i].root.setOnClickListener(v -> openChannel(ch));
             addToRow(ch.topRow ? top : bottom, channelTiles[i].root);
         }
-        addToRow(top, photosTile().root);
+        Tile photos = photosTile();
+        addToRow(top, photos.root);
         firstTile = knicks;
+        // Right from the last tile of the top row continues at the start of the bottom row
+        View bottomFirst = bottom.getChildAt(0);
+        if (bottomFirst != null) {
+            bottomFirst.setId(View.generateViewId());
+            photos.root.setNextFocusRightId(bottomFirst.getId());
+        }
 
         LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         rowParams.topMargin = dp(10);
@@ -203,23 +210,6 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
         p.setMargins(dp(10), dp(8), dp(10), dp(8));
         row.addView(tile, p);
-    }
-
-    /** Small, faint gear in the top corner: Max's settings (updates). Not meant for the grandparents. */
-    private View settingsGear() {
-        TextView gear = text(22, Color.parseColor("#A89F80"), false);
-        gear.setText("⚙");
-        gear.setGravity(Gravity.CENTER);
-        gear.setFocusable(true);
-        gear.setClickable(true);
-        GradientDrawable ring = new GradientDrawable();
-        ring.setShape(GradientDrawable.OVAL);
-        ring.setStroke(dp(6), FOCUS_RING);
-        StateListDrawable s = new StateListDrawable();
-        s.addState(new int[]{android.R.attr.state_focused}, ring);
-        gear.setBackground(s);
-        gear.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
-        return gear;
     }
 
     /** Family photos: the picture icon on a white panel, like the channel tiles. */
@@ -573,14 +563,6 @@ public class MainActivity extends Activity {
     }
 
     private final Runnable hideMessage = () -> messageView.setVisibility(View.GONE);
-
-    private void openAndroidSettings() {
-        try {
-            startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-        } catch (Exception e) {
-            showMessage("Settings unavailable");
-        }
-    }
 
     @SuppressWarnings("deprecation")
     private void hideSystemBars() {

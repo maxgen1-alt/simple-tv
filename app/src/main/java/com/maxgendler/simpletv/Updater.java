@@ -64,7 +64,7 @@ final class Updater {
      * Installs new versions by itself, so changes pushed to GitHub reach their TV from anywhere.
      * Called from the home screen's clock tick, so it never interrupts a show. Silent only once
      * Simple TV installed itself at least once (Android's rule); until then it does nothing, so
-     * Grandpa never sees an "Update?" box. Do the first update by hand: gear → Install update.
+     * Grandpa never sees an "Update?" box. Do the first update by hand: settings → Install update.
      */
     static void autoUpdateIfDue(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("updates", Context.MODE_PRIVATE);

@@ -1,6 +1,7 @@
 package com.maxgendler.simpletv;
 
 import android.graphics.Color;
+import android.view.KeyEvent;
 
 /**
  * Everything you might want to tweak lives here.
@@ -246,7 +247,12 @@ final class Config {
     /** Every build on main is published here (needs the GitHub repo to be public). */
     static final String UPDATES_URL = "https://github.com/maxgen1-alt/simple-tv/releases/latest/download/";
 
-    // ---- Hidden admin escape ----
-    /** Press UP on the remote this many times in a row to open Android settings (for you, not them). */
-    static final int ADMIN_UP_PRESSES = 7;
+    // ---- Hidden way into settings (for you, not them) ----
+    /** On the home screen: Up 5 times, then Left 5 times, opens Simple TV settings. */
+    static final int[] SECRET_KEYS = {
+            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_UP,
+            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_UP,
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_LEFT,
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_LEFT,
+    };
 }

@@ -5,7 +5,7 @@ import android.content.Context;
 /**
  * The shared Google Photos album link, saved on the stick only.
  * It's not in the code because the GitHub repo is public and anyone with the link can view the album.
- * Set it from the settings gear → "Photo album link".
+ * Set it in settings (home screen: Up x5, Left x5) → "Photo album link".
  */
 final class AlbumLink {
     private AlbumLink() {}
