@@ -162,7 +162,8 @@ public class AutoTuneService extends AccessibilityService {
     private Guide guide;
     private Stage stage;
     private int okPresses, playingSeconds;
-    private boolean sawWatch, screenBlank, readerWorks, reading, pressedProfile, pressedWatch;
+    private boolean sawWatch, screenBlank, readerWorks, reading, pressedProfile, pressedWatch,
+            pressedWatchLive;
     private long guideUntil, wrongShowUntil, lastRead, autoWaitUntil, lastReopen;
     private String startsAt; // "19:00" while the game's page says it hasn't started yet
     private TextRecognizer reader;
@@ -225,6 +226,7 @@ public class AutoTuneService extends AccessibilityService {
         wrongShowUntil = 0;
         pressedProfile = false;
         pressedWatch = false;
+        pressedWatchLive = false;
         startsAt = null;
         lastReopen = 0;
         guideUntil = System.currentTimeMillis() + GUIDE_MAX_MS;
@@ -433,6 +435,10 @@ public class AutoTuneService extends AccessibilityService {
             // "Watch" is the first, highlighted button on the game's page
             pressedWatch = true;
             pressOk();
+        } else if (stage == Stage.WATCH && pressedWatch && !pressedWatchLive && isLivePanel(words)) {
+            // Then Prime slides out a menu with "Watch Live / Main Broadcast" highlighted at the top
+            pressedWatchLive = true;
+            pressOk();
         }
     }
 
@@ -471,6 +477,12 @@ public class AutoTuneService extends AccessibilityService {
         String t = guide.teamWord;
         return words.contains(t + " vs") || words.contains("vs. " + t) || words.contains("vs " + t)
                 || words.contains(t + " at ") || words.contains(" at " + t) || words.contains("@ " + t);
+    }
+
+    /** Prime's menu after "Watch" on a live game: Watch Live, Resume, Watch with Multiview, Watch from beginning. */
+    private static boolean isLivePanel(String words) {
+        return words.contains("watch live")
+                && (words.contains("watch from beginning") || words.contains("multiview"));
     }
 
     private boolean canPressForHim() {
