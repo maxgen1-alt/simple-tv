@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.os.Bundle;
 import android.os.Handler;
@@ -40,7 +41,10 @@ public class MainActivity extends Activity {
     /** Light yellow page behind the tiles. */
     static final int PAGE_BG = Color.parseColor("#FFF3C4");
     /** Ring around the selected tile: deep blue shows up on both the yellow page and the dark tiles. */
-    static final int FOCUS_RING = Color.parseColor("#1A56DB");
+    static final int FOCUS_RING = Color.parseColor("#0047FF");
+    /** How thick the selection ring is, and how faded the tiles that aren't selected are. */
+    private static final int RING_DP = 16;
+    private static final float UNSELECTED_ALPHA = 0.55f;
     private static final int TILE_BG = Color.parseColor("#161616");
     private static final int TILE_BG_FOCUSED = Color.parseColor("#2B2B2B");
     private static final String CANT_OPEN = "Не получается открыть. Позвоните Максу.";
@@ -204,7 +208,7 @@ public class MainActivity extends Activity {
         gear.setClickable(true);
         GradientDrawable ring = new GradientDrawable();
         ring.setShape(GradientDrawable.OVAL);
-        ring.setStroke(dp(3), FOCUS_RING);
+        ring.setStroke(dp(6), FOCUS_RING);
         StateListDrawable s = new StateListDrawable();
         s.addState(new int[]{android.R.attr.state_focused}, ring);
         gear.setBackground(s);
@@ -256,13 +260,18 @@ public class MainActivity extends Activity {
             root.setFocusable(true);
             root.setClickable(true);
             root.setBackground(tileBackground());
-            root.setOnFocusChangeListener((v, has) ->
-                    v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(150).start());
+            // The selected tile grows and stays bright; the others fade back, so it's obvious which one he's on
+            root.setAlpha(UNSELECTED_ALPHA);
+            root.setOnFocusChangeListener((v, has) -> v.animate()
+                    .scaleX(has ? 1.10f : 1f).scaleY(has ? 1.10f : 1f)
+                    .alpha(has ? 1f : UNSELECTED_ALPHA)
+                    .setDuration(150).start());
 
             content = new LinearLayout(MainActivity.this);
             content.setOrientation(LinearLayout.VERTICAL);
             content.setGravity(Gravity.CENTER);
-            content.setPadding(dp(8), dp(12), dp(8), dp(12));
+            // Room inside for the thick selection ring, so it never covers the logo
+            content.setPadding(dp(RING_DP + 4), dp(RING_DP + 6), dp(RING_DP + 4), dp(RING_DP + 6));
             root.addView(content, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         }
@@ -421,10 +430,17 @@ public class MainActivity extends Activity {
         normal.setCornerRadius(dp(24));
         normal.setColor(TILE_BG);
 
-        GradientDrawable focused = new GradientDrawable();
-        focused.setCornerRadius(dp(24));
-        focused.setColor(TILE_BG_FOCUSED);
-        focused.setStroke(dp(8), FOCUS_RING);
+        // Selected: a thick blue ring with a thin white line just inside it, so it stands out
+        // against both the yellow page and the dark tile
+        GradientDrawable ring = new GradientDrawable();
+        ring.setCornerRadius(dp(24));
+        ring.setColor(TILE_BG_FOCUSED);
+        ring.setStroke(dp(RING_DP), FOCUS_RING);
+        GradientDrawable innerLine = new GradientDrawable();
+        innerLine.setCornerRadius(dp(24 - RING_DP));
+        innerLine.setStroke(dp(3), Color.WHITE);
+        LayerDrawable focused = new LayerDrawable(new Drawable[]{ring, innerLine});
+        focused.setLayerInset(1, dp(RING_DP), dp(RING_DP), dp(RING_DP), dp(RING_DP));
 
         StateListDrawable s = new StateListDrawable();
         s.addState(new int[]{android.R.attr.state_focused}, focused);
@@ -437,7 +453,7 @@ public class MainActivity extends Activity {
     private void refreshInstalled() {
         for (int i = 0; i < channelTiles.length; i++) {
             boolean ok = AppLauncher.isInstalled(this, Config.CHANNELS[i].app);
-            channelTiles[i].root.setAlpha(ok ? 1f : 0.35f);
+            channelTiles[i].content.setAlpha(ok ? 1f : 0.35f); // the tile itself fades when not selected
         }
     }
 
@@ -473,9 +489,9 @@ public class MainActivity extends Activity {
             // 2. Otherwise open the app that has the game, with the step-by-step banner on top.
             Config.Target app = targetForKey(s.game.targetKey);
             // Prime game with its link listed: straight to the game's page, and the helper presses OK
-            if (app == Config.PRIME
-                    && AppLauncher.openLink(this, app, PrimeGames.linkFor(this, s.game.tipMs))) {
-                AutoTuneService.startGuide(guideSteps(app, team).pressForHim());
+            String primeLink = app == Config.PRIME ? PrimeGames.linkFor(this, s.game.tipMs) : null;
+            if (AppLauncher.openLink(this, app, primeLink)) {
+                AutoTuneService.startGuide(guideSteps(app, team).pressForHim(primeLink));
                 return;
             }
             if (AppLauncher.launch(this, app)) {

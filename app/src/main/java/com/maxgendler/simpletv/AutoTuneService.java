@@ -32,8 +32,10 @@ import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
+import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -113,6 +115,7 @@ public class AutoTuneService extends AccessibilityService {
         final String profile, find, watch, teamWord, teamRu;
         final String profileWord; // the profile's name as it reads on screen ("alik"), or null
         boolean pressForHim;
+        String link; // the game's page, re-opened if it doesn't switch to "Watch Live" by itself
 
         Guide(String profile, String find, String watch, String teamWord, String teamRu, String profileWord) {
             this.profile = profile;
@@ -128,8 +131,9 @@ public class AutoTuneService extends AccessibilityService {
          * him: once on the profile list, once on "Watch Live". Prime hides its buttons from helpers,
          * but the remote's OK can be sent (Android 13+), and it lands on the highlighted button.
          */
-        Guide pressForHim() {
+        Guide pressForHim(String gameLink) {
             pressForHim = true;
+            link = gameLink;
             return this;
         }
     }
@@ -146,6 +150,9 @@ public class AutoTuneService extends AccessibilityService {
     private static final Pattern WATCH_LIVE_NOW = Pattern.compile("\\bwatch live\\b(?!\\s*:)");
     /** After the helper presses OK, show "please wait" this long before telling him what to press. */
     private static final long AUTO_WAIT_MS = 12_000;
+    /** The game's page before the game: "Watch Live: 7:00 PM EDT" (hour, minute, am/pm). */
+    private static final Pattern STARTS_AT =
+            Pattern.compile("watch live\\s*:\\s*(\\d{1,2}):(\\d{2})\\s*(am|pm)");
     private static volatile AutoTuneService instance;
 
     private TextView banner;
@@ -153,7 +160,8 @@ public class AutoTuneService extends AccessibilityService {
     private Stage stage;
     private int okPresses, playingSeconds;
     private boolean sawWatch, screenBlank, readerWorks, reading, pressedProfile, pressedWatch;
-    private long guideUntil, wrongShowUntil, lastRead, autoWaitUntil;
+    private long guideUntil, wrongShowUntil, lastRead, autoWaitUntil, lastReopen;
+    private String startsAt; // "19:00" while the game's page says it hasn't started yet
     private TextRecognizer reader;
     private final Runnable guideTick = this::guideTick;
 
@@ -192,6 +200,8 @@ public class AutoTuneService extends AccessibilityService {
         wrongShowUntil = 0;
         pressedProfile = false;
         pressedWatch = false;
+        startsAt = null;
+        lastReopen = 0;
         guideUntil = System.currentTimeMillis() + GUIDE_MAX_MS;
         autoWaitUntil = canPressForHim() ? System.currentTimeMillis() + AUTO_WAIT_MS : 0;
 
@@ -235,6 +245,12 @@ public class AutoTuneService extends AccessibilityService {
         }
         if (System.currentTimeMillis() < autoWaitUntil) {
             banner.setText("Включаю игру «" + guide.teamRu + "»… подождите");
+            return;
+        }
+        if (startsAt != null) {
+            banner.setText("Игра «" + guide.teamRu + "» начнётся в " + startsAt + ".  " + (canPressForHim()
+                    ? "Не выключайте — она включится сама"
+                    : "Нажмите «" + guide.teamRu + "» ещё раз в " + startsAt));
             return;
         }
         int total = guide.profile != null ? 3 : 2;
@@ -373,6 +389,15 @@ public class AutoTuneService extends AccessibilityService {
         } else {
             setStage(Stage.FIND);
         }
+        Matcher later = STARTS_AT.matcher(words);
+        if (stage == Stage.WATCH && later.find()) {
+            waitForStart(later);
+            return;
+        }
+        if (startsAt != null) {
+            startsAt = null;
+            showStepText();
+        }
         if (!canPressForHim()) return;
         if (stage == Stage.PROFILE && !pressedProfile) {
             // The last-used profile (his) is already highlighted; any profile would still play the game
@@ -383,6 +408,36 @@ public class AutoTuneService extends AccessibilityService {
             // "Watch Live" is the first, highlighted button on the game's page
             pressedWatch = true;
             pressOk();
+        }
+    }
+
+    /**
+     * The game's page is up but the game hasn't started ("Watch Live: 7:00 PM"; the team button lights up
+     * an hour early). Say when it starts and keep the banner up until then. With pressForHim the helper
+     * keeps reading and presses "Watch Live" the moment it appears; if the page doesn't switch over by
+     * itself, it re-opens the game's page once a minute after the start time.
+     */
+    private void waitForStart(Matcher time) {
+        int hour = Integer.parseInt(time.group(1)) % 12 + (time.group(3).equals("pm") ? 12 : 0);
+        int minute = Integer.parseInt(time.group(2));
+        Calendar start = Calendar.getInstance();
+        start.set(Calendar.HOUR_OF_DAY, hour);
+        start.set(Calendar.MINUTE, minute);
+        start.set(Calendar.SECOND, 0);
+        long now = System.currentTimeMillis();
+        long startMs = start.getTimeInMillis();
+        // Stay up until a little after the start (at most 90 minutes of waiting)
+        guideUntil = Math.max(guideUntil, Math.min(startMs, now + 90 * 60_000L) + GUIDE_MAX_MS);
+        String shown = String.format(Locale.ROOT, "%d:%02d", hour, minute);
+        if (!shown.equals(startsAt)) {
+            startsAt = shown;
+            showStepText();
+        }
+        if (canPressForHim() && guide.link != null && now > startMs + 60_000 && now - lastReopen > 60_000) {
+            Log.i(TAG, "start time passed, re-opening the game's page");
+            lastReopen = now;
+            pressedProfile = false; // it may ask "who's watching" again
+            AppLauncher.openLink(this, Config.PRIME, guide.link);
         }
     }
 

@@ -198,7 +198,7 @@ public class SettingsActivity extends Activity {
         if (link == null) {
             status.setText("No Prime game listed for today in prime-games.txt (the list refreshes every 30 min).");
         } else if (AppLauncher.openLink(this, Config.PRIME, link)) {
-            AutoTuneService.startGuide(MainActivity.guideSteps(Config.PRIME, Config.KNICKS).pressForHim());
+            AutoTuneService.startGuide(MainActivity.guideSteps(Config.PRIME, Config.KNICKS).pressForHim(link));
         } else {
             status.setText("Prime Video isn't installed.");
         }
