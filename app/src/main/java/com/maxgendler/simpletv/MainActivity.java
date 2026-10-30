@@ -142,7 +142,7 @@ public class MainActivity extends Activity {
 
         LinearLayout column = new LinearLayout(this);
         column.setOrientation(LinearLayout.VERTICAL);
-        column.setPadding(dp(30), dp(20), dp(30), dp(20));
+        column.setPadding(dp(30), dp(20), dp(30), dp(34)); // room below so the bottom row's ring isn't cut off
         root.addView(column, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
