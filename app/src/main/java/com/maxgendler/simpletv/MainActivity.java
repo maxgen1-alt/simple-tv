@@ -51,7 +51,7 @@ public class MainActivity extends Activity {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
 
-    private TextView dateView, timeView, messageView;
+    private TextView dateView, weatherView, timeView, messageView;
     private TeamTile knicks, chelsea;
     private ChannelTile[] channelTiles;
     private Tile firstTile;
@@ -153,6 +153,9 @@ public class MainActivity extends Activity {
         dateView = text(30, Color.parseColor("#5A5040"), false);
         timeView = text(40, Color.parseColor("#222222"), true);
         clock.addView(dateView);
+        weatherView = text(30, Color.parseColor("#1F4E8C"), true); // Brooklyn weather, right after the date
+        weatherView.setPadding(dp(40), 0, 0, 0);
+        clock.addView(weatherView);
         clock.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         clock.addView(timeView);
         clock.addView(settingsGear(), new LinearLayout.LayoutParams(dp(36), dp(36)));
@@ -477,6 +480,8 @@ public class MainActivity extends Activity {
         Date now = new Date();
         String date = new SimpleDateFormat("EEEE, d MMMM", RU).format(now);
         dateView.setText(capitalize(date));
+        weatherView.setText(Weather.line(this));
+        Weather.refreshIfStale(this, () -> weatherView.setText(Weather.line(this)));
         timeView.setText(new SimpleDateFormat("HH:mm", RU).format(now));
     }
 

@@ -231,6 +231,11 @@ final class Config {
     /** ...and keeps glowing this long after kickoff (games run ~2.5h). */
     static final long GLOW_AFTER_MS = 3L * 60 * 60 * 1000;
 
+    // ---- Weather (next to the date) ----
+    static final String WEATHER_PLACE_RU = "Бруклин";
+    static final double WEATHER_LAT = 40.6782;
+    static final double WEATHER_LON = -73.9442;
+
     // ---- Family photos ----
     /*
      * The shared Google Photos album link is NOT kept here: this repo is public, and anyone
