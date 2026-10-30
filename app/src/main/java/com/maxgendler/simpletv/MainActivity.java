@@ -14,6 +14,10 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.RelativeSizeSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -400,10 +404,10 @@ public class MainActivity extends Activity {
             switch (current.phase) {
                 case LIVE:
                     // ◉ = the round middle button: the ONN remote has no "OK" written on it
-                    status.setText("ИГРА ИДЁТ\nНажмите ◉");
+                    status.setText(pressRound("ИГРА ИДЁТ\nНажмите ◉"));
                     break;
                 case SOON:
-                    status.setText("Игра в " + time(g.tipMs) + "\nНажмите ◉");
+                    status.setText(pressRound("Игра в " + time(g.tipMs) + "\nНажмите ◉"));
                     break;
                 case LATER:
                     status.setText(dayAndTime(g.tipMs));
@@ -585,6 +589,17 @@ public class MainActivity extends Activity {
         t.setIncludeFontPadding(false);
         if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
         return t;
+    }
+
+    /** "...\nНажмите ◉" with the ◉ big and white, so it looks like the remote's round middle button. */
+    private static CharSequence pressRound(String text) {
+        SpannableString s = new SpannableString(text);
+        int at = text.indexOf('◉');
+        if (at >= 0) {
+            s.setSpan(new RelativeSizeSpan(1.6f), at, at + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            s.setSpan(new ForegroundColorSpan(Color.WHITE), at, at + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        return s;
     }
 
     private static String time(long ms) {
