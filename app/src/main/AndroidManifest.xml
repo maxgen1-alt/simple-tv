@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Lets the settings screen install updates (Android still asks you to confirm each one) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- TV app: no touchscreen needed, works on Google TV / Android TV -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
@@ -75,6 +77,21 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity-alias>
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <activity
+            android:name=".PhotosActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <!-- Gets the result from Android's installer after an update -->
+        <receiver
+            android:name=".InstallReceiver"
+            android:exported="false" />
+
         <!-- Clicks through eTVnet to RTVI / NTV. Off until switched on in Settings > Accessibility. -->
         <service
             android:name=".AutoTuneService"

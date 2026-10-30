@@ -198,6 +198,17 @@ final class Config {
     /** ...and keeps glowing this long after kickoff (games run ~2.5h). */
     static final long GLOW_AFTER_MS = 3L * 60 * 60 * 1000;
 
+    // ---- Family photos ----
+    /**
+     * A SHARED Google Photos album: in Google Photos open the album → Share → Create link,
+     * and paste it here. Only this album is shown, view-only. "" = Photos button says "not set up".
+     */
+    static final String PHOTO_ALBUM_URL = "";
+
+    // ---- Updates (settings gear) ----
+    /** Every build on main is published here (needs the GitHub repo to be public). */
+    static final String UPDATES_URL = "https://github.com/maxgen1-alt/simple-tv/releases/latest/download/";
+
     // ---- Hidden admin escape ----
     /** Press UP on the remote this many times in a row to open Android settings (for you, not them). */
     static final int ADMIN_UP_PRESSES = 7;

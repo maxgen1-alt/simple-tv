@@ -37,6 +37,10 @@ import java.util.Locale;
 public class MainActivity extends Activity {
 
     private static final Locale RU = new Locale("ru");
+    /** Light yellow page behind the tiles. */
+    static final int PAGE_BG = Color.parseColor("#FFF3C4");
+    /** Ring around the selected tile: deep blue shows up on both the yellow page and the dark tiles. */
+    static final int FOCUS_RING = Color.parseColor("#1A56DB");
     private static final int TILE_BG = Color.parseColor("#161616");
     private static final int TILE_BG_FOCUSED = Color.parseColor("#2B2B2B");
     private static final String CANT_OPEN = "Не получается открыть. Позвоните Максу.";
@@ -126,47 +130,50 @@ public class MainActivity extends Activity {
 
     private View buildScreen() {
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.BLACK);
+        root.setBackgroundColor(PAGE_BG);
 
         LinearLayout column = new LinearLayout(this);
         column.setOrientation(LinearLayout.VERTICAL);
-        column.setPadding(dp(30), dp(24), dp(30), dp(24));
+        column.setPadding(dp(30), dp(20), dp(30), dp(20));
         root.addView(column, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // Clock row
+        // Clock row, with Max's small settings gear tucked in the corner
         LinearLayout clock = new LinearLayout(this);
         clock.setOrientation(LinearLayout.HORIZONTAL);
         clock.setGravity(Gravity.CENTER_VERTICAL);
-        clock.setPadding(dp(10), 0, dp(10), 0);
-        dateView = text(30, Color.parseColor("#BDBDBD"), false);
-        timeView = text(40, Color.WHITE, true);
+        clock.setPadding(dp(10), 0, dp(4), 0);
+        dateView = text(30, Color.parseColor("#5A5040"), false);
+        timeView = text(40, Color.parseColor("#222222"), true);
         clock.addView(dateView);
         clock.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         clock.addView(timeView);
+        clock.addView(settingsGear(), new LinearLayout.LayoutParams(dp(36), dp(36)));
         column.addView(clock, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        // One row of six tiles, centered in the space below the clock
+        // Two rows. Top: sports, US channels, photos. Bottom: Russian channels (eTVnet).
         knicks = new TeamTile(Config.KNICKS);
         chelsea = new TeamTile(Config.CHELSEA);
         channelTiles = new ChannelTile[Config.CHANNELS.length];
 
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        addToRow(row, knicks.root);
-        addToRow(row, chelsea.root);
+        LinearLayout top = new LinearLayout(this);
+        LinearLayout bottom = new LinearLayout(this);
+        addToRow(top, knicks.root);
+        addToRow(top, chelsea.root);
         for (int i = 0; i < Config.CHANNELS.length; i++) {
             Config.Channel ch = Config.CHANNELS[i];
             channelTiles[i] = new ChannelTile(ch);
             channelTiles[i].root.setOnClickListener(v -> openChannel(ch));
-            addToRow(row, channelTiles[i].root);
+            addToRow(ch.app == Config.ETVNET ? bottom : top, channelTiles[i].root);
         }
+        addToRow(top, photosTile().root);
         firstTile = knicks;
 
-        column.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
-        column.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(330)));
-        column.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        rowParams.topMargin = dp(10);
+        column.addView(top, rowParams);
+        column.addView(bottom, new LinearLayout.LayoutParams(rowParams));
 
         // Big message strip for "couldn't open" etc.
         messageView = text(34, Color.WHITE, true);
@@ -182,8 +189,55 @@ public class MainActivity extends Activity {
 
     private void addToRow(LinearLayout row, View tile) {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
-        p.setMargins(dp(8), dp(8), dp(8), dp(8));
+        p.setMargins(dp(10), dp(8), dp(10), dp(8));
         row.addView(tile, p);
+    }
+
+    /** Small, faint gear in the top corner: Max's settings (updates). Not meant for the grandparents. */
+    private View settingsGear() {
+        TextView gear = text(22, Color.parseColor("#A89F80"), false);
+        gear.setText("⚙");
+        gear.setGravity(Gravity.CENTER);
+        gear.setFocusable(true);
+        gear.setClickable(true);
+        GradientDrawable ring = new GradientDrawable();
+        ring.setShape(GradientDrawable.OVAL);
+        ring.setStroke(dp(3), FOCUS_RING);
+        StateListDrawable s = new StateListDrawable();
+        s.addState(new int[]{android.R.attr.state_focused}, ring);
+        gear.setBackground(s);
+        gear.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
+        return gear;
+    }
+
+    /** Family photos: the picture icon on a white panel, like the channel tiles. */
+    private Tile photosTile() {
+        Tile t = new Tile();
+        FrameLayout panel = new FrameLayout(this);
+        GradientDrawable white = new GradientDrawable();
+        white.setCornerRadius(dp(16));
+        white.setColor(Color.WHITE);
+        panel.setBackground(white);
+        panel.setPadding(dp(10), dp(10), dp(10), dp(10));
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(R.drawable.photos);
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        panel.addView(icon, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        t.content.addView(panel, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        TextView caption = text(22, Color.WHITE, true);
+        caption.setGravity(Gravity.CENTER);
+        caption.setText("ФОТО");
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30));
+        cp.topMargin = dp(8);
+        t.content.addView(caption, cp);
+
+        t.root.setOnClickListener(v -> {
+            if (Config.PHOTO_ALBUM_URL.isEmpty()) showMessage("Альбом ещё не настроен. Позвоните Максу.");
+            else startActivity(new Intent(this, PhotosActivity.class));
+        });
+        return t;
     }
 
     private TeamTile[] teams() {
@@ -206,7 +260,7 @@ public class MainActivity extends Activity {
             content = new LinearLayout(MainActivity.this);
             content.setOrientation(LinearLayout.VERTICAL);
             content.setGravity(Gravity.CENTER);
-            content.setPadding(dp(8), dp(16), dp(8), dp(16));
+            content.setPadding(dp(8), dp(12), dp(8), dp(12));
             root.addView(content, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         }
@@ -245,7 +299,7 @@ public class MainActivity extends Activity {
             panel.addView(logo, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             panel.setVisibility(View.GONE);
-            content.addView(panel, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(120)));
+            content.addView(panel, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
             caption = text(22, Color.WHITE, true);
             caption.setGravity(Gravity.CENTER);
@@ -364,7 +418,7 @@ public class MainActivity extends Activity {
         GradientDrawable focused = new GradientDrawable();
         focused.setCornerRadius(dp(24));
         focused.setColor(TILE_BG_FOCUSED);
-        focused.setStroke(dp(8), Color.WHITE);
+        focused.setStroke(dp(8), FOCUS_RING);
 
         StateListDrawable s = new StateListDrawable();
         s.addState(new int[]{android.R.attr.state_focused}, focused);

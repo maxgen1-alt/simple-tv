@@ -35,7 +35,7 @@ jobs:
           SIGNING_KEY_B64: ${{ secrets.SIGNING_KEY_B64 }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
-          echo "$SIGNING_KEY_B64" | base64 -d > "$RUNNER_TEMP/signing.p12"
+          echo "$SIGNING_KEY_B64" | tr -d '\r\n ' | base64 -d > "$RUNNER_TEMP/signing.p12"
           alias=$(keytool -list -v -storetype pkcs12 -keystore "$RUNNER_TEMP/signing.p12" \
                   -storepass "$SIGNING_KEY_PASSWORD" | sed -n 's/^Alias name: //p' | head -1)
           echo "SIGNING_KEY_FILE=$RUNNER_TEMP/signing.p12" >> "$GITHUB_ENV"
