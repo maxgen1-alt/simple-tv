@@ -136,6 +136,7 @@ final class Config {
     static final String ESPN_LINK = "https://tv.youtube.com/watch/Y2iC0MjiQeI";
     static final String USA_LINK = "https://tv.youtube.com/watch/Qi_C4zyXBIg";
     static final String FOX_LINK = "https://tv.youtube.com/watch/qUyOvSNqmEQ";
+    static final String NBCSN_LINK = "https://tv.youtube.com/watch/vfybTeytliY";
 
     static final Channel[] CHANNELS = {
             // (ABC has no button anymore, but ABC_LINK still sends Knicks/Chelsea games on ABC there)
@@ -160,7 +161,7 @@ final class Config {
     static final String[][] SPORTS_ON_CABLE = {
             {"abc", ABC_LINK},
             {"nbc", NBC_LINK},
-            {"nbcsn", ""},              // NBC's sports cable channel, separate from NBC
+            {"nbcsn", NBCSN_LINK},      // NBC's sports cable channel, separate from NBC
             {"espn", ESPN_LINK},        // ESPN+ is skipped: it's an app, not this channel
             {"espn2", ""},
             {"usa", USA_LINK},          // ESPN lists it as "USA Net"
