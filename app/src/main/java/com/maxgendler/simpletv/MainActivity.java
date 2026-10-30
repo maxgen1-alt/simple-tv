@@ -492,6 +492,11 @@ public class MainActivity extends Activity {
                 AutoTuneService.startGuide(guideSteps(app, team).pressForHim(primeLink));
                 return;
             }
+            // Peacock has no game links: start it fresh and the helper drives it to the game
+            if (app == Config.PEACOCK && AutoTuneService.isEnabled(this) && AppLauncher.launchFresh(this, app)) {
+                AutoTuneService.startGuide(guideSteps(app, team).steerPeacock());
+                return;
+            }
             if (AppLauncher.launch(this, app)) {
                 AutoTuneService.startGuide(guideSteps(app, team));
                 return;

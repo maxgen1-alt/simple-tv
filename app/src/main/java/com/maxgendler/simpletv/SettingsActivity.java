@@ -60,7 +60,7 @@ public class SettingsActivity extends Activity {
         col.addView(updateButton, buttonParams());
         homeButton = button("", v -> toggleHomeScreen());
         col.addView(button("Photo album link", v -> editAlbumLink()), buttonParams());
-        col.addView(button("Test game banner (opens Peacock)", v -> testGuide()), buttonParams());
+        col.addView(button("Test Peacock Chelsea game (helper drives)", v -> testGuide()), buttonParams());
         col.addView(button("Test Prime game (today's listed game)", v -> testPrime()), buttonParams());
         col.addView(button("Android settings", v -> open(new Intent(Settings.ACTION_SETTINGS))), buttonParams());
         col.addView(button("Accessibility (eTVnet helper)",
@@ -194,14 +194,18 @@ public class SettingsActivity extends Activity {
                 .show();
     }
 
-    /** Opens Peacock with the Knicks game banner on top, exactly like the Knicks button during a game. */
+    /**
+     * Same as the Chelsea button on a Peacock game day: opens Peacock and the helper drives it to the
+     * Chelsea game (profile, Sports, the game, Watch). With no Chelsea game on, it gives up after looking
+     * through Sports and shows the step-by-step banner.
+     */
     private void testGuide() {
         if (!AutoTuneService.isEnabled(this)) {
             status.setText("Switch on the eTVnet helper first (Accessibility). It also shows the banner.");
             return;
         }
-        if (AppLauncher.launch(this, Config.PEACOCK)) {
-            AutoTuneService.startGuide(MainActivity.guideSteps(Config.PEACOCK, Config.KNICKS));
+        if (AppLauncher.launchFresh(this, Config.PEACOCK)) {
+            AutoTuneService.startGuide(MainActivity.guideSteps(Config.PEACOCK, Config.CHELSEA).steerPeacock());
         } else {
             status.setText("Peacock isn't installed.");
         }
