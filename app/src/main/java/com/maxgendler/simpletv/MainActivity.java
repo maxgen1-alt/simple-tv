@@ -165,7 +165,7 @@ public class MainActivity extends Activity {
             Config.Channel ch = Config.CHANNELS[i];
             channelTiles[i] = new ChannelTile(ch);
             channelTiles[i].root.setOnClickListener(v -> openChannel(ch));
-            addToRow(ch.app == Config.ETVNET ? bottom : top, channelTiles[i].root);
+            addToRow(ch.topRow ? top : bottom, channelTiles[i].root);
         }
         addToRow(top, photosTile().root);
         firstTile = knicks;

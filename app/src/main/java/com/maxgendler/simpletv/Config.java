@@ -103,8 +103,24 @@ final class Config {
 
         /** Cover logo: a file name on Wikimedia Commons (commons.wikimedia.org). */
         Channel logo(String commonsFile) {
-            logoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/"
-                    + android.net.Uri.encode(commonsFile) + "?width=400";
+            return logoFrom("commons.wikimedia.org", commonsFile);
+        }
+
+        /** Cover logo that's only on Russian Wikipedia (ru.wikipedia.org), not Commons. */
+        Channel ruWikiLogo(String file) {
+            return logoFrom("ru.wikipedia.org", file);
+        }
+
+        private Channel logoFrom(String site, String file) {
+            logoUrl = "https://" + site + "/wiki/Special:FilePath/" + android.net.Uri.encode(file) + "?width=400";
+            return this;
+        }
+
+        /** Home screen row: true = top (sports, US channels), false = bottom (Russian channels). */
+        boolean topRow;
+
+        Channel onTop() {
+            topRow = true;
             return this;
         }
     }
@@ -121,8 +137,10 @@ final class Config {
     static final String USA_LINK = "https://tv.youtube.com/watch/Qi_C4zyXBIg";
 
     static final Channel[] CHANNELS = {
-            Channel.cable("КАНАЛ", "7", ABC_LINK).logo("ABC-2021-LOGO.svg"),
-            Channel.cable("КАНАЛ", "4", NBC_LINK).logo("NBC logo 2022.svg"),
+            // (ABC has no button anymore, but ABC_LINK still sends Knicks/Chelsea games on ABC there)
+            Channel.cable("КАНАЛ", "4", NBC_LINK).logo("NBC logo 2022.svg").onTop(),
+            Channel.etvnet("МАТЧ! АРЕНА", "Матч! Арена HD").inRow("Спортивные")
+                   .ruWikiLogo("Матч! Арена.png").onTop(),                               // channel 305
             // Names exactly as eTVnet shows them in its "Центральные" row
             Channel.etvnet("RTVI", "RTVI US").logo("RTVI Logo magenta fill 2021.png"),     // channel 8
             Channel.etvnet("НТВ", "НТВ America").logo("NTV logo 2003.svg"),               // channel 13
