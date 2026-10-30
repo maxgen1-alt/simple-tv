@@ -471,15 +471,7 @@ public class MainActivity extends Activity {
             if (AppLauncher.openLink(this, Config.CABLE, Schedule.cableLink(s.game))) return;
             // 2. Otherwise open the app that has the game, with the step-by-step banner on top.
             Config.Target app = targetForKey(s.game.targetKey);
-            if (app == Config.DAZN && AutoTuneService.isEnabled(this)) {
-                // DAZN's screens can be read, so the helper presses the game for him
-                AutoTuneService.pickDaznGame(team.key, false);
-                if (AppLauncher.launchFresh(this, app)) {
-                    AutoTuneService.startGuide(guideSteps(app, team));
-                    return;
-                }
-                AutoTuneService.stopGuide();
-            } else if (AppLauncher.launch(this, app)) {
+            if (AppLauncher.launch(this, app)) {
                 AutoTuneService.startGuide(guideSteps(app, team));
                 return;
             }
