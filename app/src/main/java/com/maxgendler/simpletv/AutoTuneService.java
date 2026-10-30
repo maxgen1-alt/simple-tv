@@ -146,8 +146,11 @@ public class AutoTuneService extends AccessibilityService {
     private static final long READ_EVERY_MS = 2000;
     private static final Pattern WATCH_BUTTON =
             Pattern.compile("\\b(watch|watch live|watch now|play|resume|start over)\\b");
-    /** The game page's play button once the game is on ("Watch Live: 7:00 PM EDT" = not started yet). */
-    private static final Pattern WATCH_LIVE_NOW = Pattern.compile("\\bwatch live\\b(?!\\s*:)");
+    /**
+     * The game page's play button once the game is on: "Watch" (seen live 2026-10-30) or "Watch Live".
+     * "Watch Live: 7:00 PM EDT" = not started yet, handled by STARTS_AT before this is checked.
+     */
+    private static final Pattern WATCH_LIVE_NOW = Pattern.compile("\\bwatch\\b(?!\\s*(live\\s*)?:)");
     /** After the helper presses OK, show "please wait" this long before telling him what to press. */
     private static final long AUTO_WAIT_MS = 12_000;
     /** The game's page before the game: "Watch Live: 7:00 PM EDT" (hour, minute, am/pm). */
@@ -427,7 +430,7 @@ public class AutoTuneService extends AccessibilityService {
             pressOk();
         } else if (stage == Stage.WATCH && !pressedWatch && WATCH_LIVE_NOW.matcher(words).find()
                 && isTeamGamePage(words)) {
-            // "Watch Live" is the first, highlighted button on the game's page
+            // "Watch" is the first, highlighted button on the game's page
             pressedWatch = true;
             pressOk();
         }
