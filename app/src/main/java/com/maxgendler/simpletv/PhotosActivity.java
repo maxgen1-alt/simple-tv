@@ -25,7 +25,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Family photos from ONE shared Google Photos album (the link in Config). View only:
+ * Family photos from ONE shared Google Photos album (the link saved in settings). View only:
  * ◀ ▶ (or OK) to flip through, Back to go home. Nothing here can change the album.
  */
 public class PhotosActivity extends Activity {
@@ -71,7 +71,7 @@ public class PhotosActivity extends Activity {
     private void loadAlbum() {
         new Thread(() -> {
             try {
-                String html = Net.downloadText(Config.PHOTO_ALBUM_URL);
+                String html = Net.downloadText(AlbumLink.get(this));
                 LinkedHashSet<String> found = new LinkedHashSet<>();
                 Matcher m = PHOTO.matcher(html);
                 while (m.find()) found.add(m.group());

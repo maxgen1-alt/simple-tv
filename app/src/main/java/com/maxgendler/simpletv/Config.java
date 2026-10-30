@@ -199,11 +199,10 @@ final class Config {
     static final long GLOW_AFTER_MS = 3L * 60 * 60 * 1000;
 
     // ---- Family photos ----
-    /**
-     * A SHARED Google Photos album: in Google Photos open the album → Share → Create link,
-     * and paste it here. Only this album is shown, view-only. "" = Photos button says "not set up".
+    /*
+     * The shared Google Photos album link is NOT kept here: this repo is public, and anyone
+     * with the link can see the album. It's saved on the stick itself (see AlbumLink).
      */
-    static final String PHOTO_ALBUM_URL = "";
 
     // ---- Updates (settings gear) ----
     /** Every build on main is published here (needs the GitHub repo to be public). */

@@ -234,7 +234,7 @@ public class MainActivity extends Activity {
         t.content.addView(caption, cp);
 
         t.root.setOnClickListener(v -> {
-            if (Config.PHOTO_ALBUM_URL.isEmpty()) showMessage("Альбом ещё не настроен. Позвоните Максу.");
+            if (AlbumLink.get(this).isEmpty()) showMessage("Альбом ещё не настроен. Позвоните Максу.");
             else startActivity(new Intent(this, PhotosActivity.class));
         });
         return t;

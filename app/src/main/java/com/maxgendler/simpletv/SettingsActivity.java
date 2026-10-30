@@ -1,6 +1,9 @@
 package com.maxgendler.simpletv;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.text.InputType;
+import android.widget.EditText;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -51,6 +54,7 @@ public class SettingsActivity extends Activity {
 
         updateButton = button("Check for updates", v -> onUpdatePressed());
         col.addView(updateButton, buttonParams());
+        col.addView(button("Photo album link", v -> editAlbumLink()), buttonParams());
         col.addView(button("Android settings", v -> open(new Intent(Settings.ACTION_SETTINGS))), buttonParams());
         col.addView(button("Accessibility (eTVnet helper)",
                 v -> open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))), buttonParams());
@@ -108,6 +112,26 @@ public class SettingsActivity extends Activity {
                 main.post(() -> status.setText("Download failed: " + e.getMessage()));
             }
         }, "update-install").start();
+    }
+
+    /**
+     * Paste or type the shared album link (the Google TV app on a phone works as a keyboard).
+     * Saved on this stick only, never in the public code.
+     */
+    private void editAlbumLink() {
+        EditText field = new EditText(this);
+        field.setSingleLine(true);
+        field.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        field.setHint("https://photos.app.goo.gl/...");
+        field.setText(AlbumLink.get(this));
+        new AlertDialog.Builder(this)
+                .setTitle("Shared Google Photos album link")
+                .setMessage("In Google Photos: open the album → Share → Create link. Leave empty to turn Photos off.")
+                .setView(field)
+                .setPositiveButton("Save", (d, w) -> status.setText(AlbumLink.set(this, field.getText().toString())
+                        ? "Album link saved." : "That isn't a Google Photos share link. Nothing saved."))
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void open(Intent i) {
