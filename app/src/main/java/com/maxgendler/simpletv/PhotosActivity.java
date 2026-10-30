@@ -19,6 +19,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -82,6 +83,7 @@ public class PhotosActivity extends Activity {
                 while (m.find()) found.add(m.group());
                 main.post(() -> {
                     photos.addAll(found);
+                    Collections.shuffle(photos); // new random order every time; ◀ still goes back through it
                     if (photos.isEmpty()) counter.setText("В альбоме нет фото.");
                     else show(0);
                 });
