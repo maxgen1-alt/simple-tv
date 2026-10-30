@@ -30,7 +30,7 @@ final class Weather {
         long f = Math.round(c * 9 / 5 + 32);
         long rounded = Math.round(c);
         String sign = rounded > 0 ? "+" : "";
-        return Config.WEATHER_PLACE_RU + "  " + icon(code) + " " + sign + rounded + "°  (" + f + "°F)  " + words(code);
+        return Config.WEATHER_PLACE_RU + "  " + icon(code) + " " + sign + rounded + "° (" + f + "°F) " + words(code);
     }
 
     /** Downloads fresh weather in the background if ours is old; calls onUpdated on the main thread. */

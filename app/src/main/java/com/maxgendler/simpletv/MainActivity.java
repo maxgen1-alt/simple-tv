@@ -153,8 +153,8 @@ public class MainActivity extends Activity {
         dateView = text(30, Color.parseColor("#5A5040"), false);
         timeView = text(40, Color.parseColor("#222222"), true);
         clock.addView(dateView);
-        weatherView = text(30, Color.parseColor("#1F4E8C"), true); // Brooklyn weather, right after the date
-        weatherView.setPadding(dp(40), 0, 0, 0);
+        weatherView = text(26, Color.parseColor("#1F4E8C"), true); // Brooklyn weather, right after the date
+        weatherView.setPadding(dp(32), 0, dp(32), 0); // gap before the clock too
         clock.addView(weatherView);
         clock.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         clock.addView(timeView);
