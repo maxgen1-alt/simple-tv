@@ -187,7 +187,7 @@ public class AutoTuneService extends AccessibilityService {
                 } catch (Exception e) {
                     Log.w(TAG, "couldn't go home after update", e);
                 }
-            }, 1500);
+            }, 300);
         } catch (Exception ignored) {
         }
     }
