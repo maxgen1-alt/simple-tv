@@ -81,7 +81,9 @@ public class SettingsActivity extends Activity {
     protected void onResume() {
         super.onResume();
         helper.setText("eTVnet helper: " + (AutoTuneService.isEnabled(this)
-                ? "on" : "OFF (the eTVnet channel buttons won't open their channel)"));
+                ? "on" : "OFF (the eTVnet channel buttons won't open their channel)")
+                + "\nAutomatic updates: " + (Updater.installedBySelf(this) && Updater.canInstall(this)
+                ? "on" : "off until you press Install update once"));
         showHomeScreenState();
     }
 
