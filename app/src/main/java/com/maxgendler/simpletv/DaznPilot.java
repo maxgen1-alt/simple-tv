@@ -19,7 +19,8 @@ final class DaznPilot extends Pilot {
     private static final int MIN_TILE_W = 250, MIN_TILE_H = 200;
 
     private final String team;
-    private int downs, sideways, backs;
+    private static final int MAX_WAITS = 25; // screen reads, ~2-3 s apart
+    private int waits, downs, blindDowns, sideways, backs;
 
     DaznPilot(String teamWord) {
         team = teamWord;
@@ -32,6 +33,16 @@ final class DaznPilot extends Pilot {
 
     @Override
     protected Key decide(List<Line> lines, Pixels px) {
+        // 0. DAZN shows "Getting things ready for you..." for ~15 s; presses then are lost or worse
+        boolean loaded = false;
+        for (Line l : lines) {
+            if (l.text.equals("watch now") || l.text.startsWith("join live") || isTile(l)) loaded = true;
+        }
+        if (!loaded) {
+            if (waits++ >= MAX_WAITS) return giveUp("DAZN never loaded");
+            return say(Key.NONE, "waiting for DAZN to load");
+        }
+
         // 1. The game's "Join live / Watch from start" screen
         Line join = null, title = null;
         for (Line l : lines) {
@@ -78,7 +89,7 @@ final class DaznPilot extends Pilot {
                     && (target == null || l.l < target.l)) target = l; // leftmost: live games come first
         }
         if (focused == null) {
-            if (downs++ >= MAX_DOWNS) return giveUp("highlight not found");
+            if (blindDowns++ >= MAX_DOWNS) return giveUp("highlight not found");
             return say(Key.DOWN, "into the rows");
         }
         if (target == null) {
