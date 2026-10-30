@@ -405,7 +405,9 @@ public class AutoTuneService extends AccessibilityService {
     static void pickDaznGame(String teamWord, boolean replayOk) {
         daznTeam = teamWord.toLowerCase(Locale.ROOT);
         daznReplayOk = replayOk;
-        daznUntil = System.currentTimeMillis() + DAZN_GIVE_UP_MS;
+        // On game day only wait briefly: until the remote-OK press is proven, the helper's presses
+        // don't open anything in DAZN, so he gets the normal banner steps soon
+        daznUntil = System.currentTimeMillis() + (replayOk ? DAZN_GIVE_UP_MS : 15_000);
         AutoTuneService s = instance;
         if (s != null) s.handler.post(() -> {
             s.daznGameOpened = false;
@@ -539,10 +541,17 @@ public class AutoTuneService extends AccessibilityService {
         return false;
     }
 
-    /** Moves the highlight onto it (like the remote would), then presses it. */
-    private static void press(AccessibilityNodeInfo n) {
+    /**
+     * Moves the highlight onto it, then presses it. DAZN ignores a plain "click" from the helper, so the
+     * Settings test also sends the remote's OK (Android 13+). Not on game day yet: if DAZN's highlight
+     * didn't really move, OK would press whatever it's on (e.g. another game's "Watch now").
+     */
+    private void press(AccessibilityNodeInfo n) {
         n.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
         n.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+        if (daznReplayOk && Build.VERSION.SDK_INT >= 33) {
+            handler.postDelayed(() -> performGlobalAction(GLOBAL_ACTION_DPAD_CENTER), 700);
+        }
     }
 
     /** Every node on screen, top to bottom in reading order. */
