@@ -135,6 +135,7 @@ final class Config {
     static final String NBC_LINK = "https://tv.youtube.com/watch/fIbKmfCLA9o";
     static final String ESPN_LINK = "https://tv.youtube.com/watch/Y2iC0MjiQeI";
     static final String USA_LINK = "https://tv.youtube.com/watch/Qi_C4zyXBIg";
+    static final String FOX_LINK = "https://tv.youtube.com/watch/qUyOvSNqmEQ";
 
     static final Channel[] CHANNELS = {
             // (ABC has no button anymore, but ABC_LINK still sends Knicks/Chelsea games on ABC there)
@@ -153,17 +154,25 @@ final class Config {
 
     /**
      * Sports games on a channel the cable app carries go straight to that channel: one click, game on.
-     * Left side: a word in ESPN's channel listing. Right side: that channel's live link ("" = not set).
+     * Left side: the channel's name in ESPN's listing. Right side: its live link ("" = not set yet,
+     * fall back to the streaming app). Longer names come first so "fox deportes" isn't taken for "fox".
      */
     static final String[][] SPORTS_ON_CABLE = {
             {"abc", ABC_LINK},
             {"nbc", NBC_LINK},
-            {"espn", ESPN_LINK},  // ESPN+ is skipped: it's an app, not this channel
-            {"usa", USA_LINK},     // ESPN lists it as "USA Net"
-            {"nbcsn", ""},         // NBC's sports cable channel, separate from NBC (channel 4)
+            {"nbcsn", ""},              // NBC's sports cable channel, separate from NBC
+            {"espn", ESPN_LINK},        // ESPN+ is skipped: it's an app, not this channel
             {"espn2", ""},
-            {"msg", ""},
+            {"usa", USA_LINK},          // ESPN lists it as "USA Net"
+            {"fox deportes", ""},       // Spanish, not FOX
+            {"fox", FOX_LINK},
+            {"fs1", ""},
+            {"cbs sports network", ""}, // not CBS
+            {"cbssn", ""},
+            {"cbs", ""},
+            {"cnbc", ""},
             {"nba tv", ""},
+            {"msg", ""},                // not on YouTube TV in New York; DAZN has it
     };
 
     // ---- Team buttons (tiles 1 and 2) ----

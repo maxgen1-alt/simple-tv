@@ -144,7 +144,9 @@ final class Schedule {
             if (name.contains("+")) continue; // ESPN+, Paramount+ etc. are apps, not channels
             for (String[] rule : Config.SPORTS_ON_CABLE) {
                 boolean same = name.equals(rule[0]) || name.startsWith(rule[0] + " ");
-                if (same && !rule[1].isEmpty()) return rule[1];
+                if (!same) continue;
+                if (!rule[1].isEmpty()) return rule[1];
+                break; // known channel with no link yet: don't let a shorter rule ("fox") claim it
             }
         }
         return null;
