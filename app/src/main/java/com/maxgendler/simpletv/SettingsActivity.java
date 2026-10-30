@@ -59,14 +59,15 @@ public class SettingsActivity extends Activity {
         updateButton = button("Check for updates", v -> onUpdatePressed());
         col.addView(updateButton, buttonParams());
         homeButton = button("", v -> toggleHomeScreen());
-        col.addView(homeButton, buttonParams());
         col.addView(button("Photo album link", v -> editAlbumLink()), buttonParams());
         col.addView(button("Test game banner (opens Peacock)", v -> testGuide()), buttonParams());
         col.addView(button("Test Prime game (today's listed game)", v -> testPrime()), buttonParams());
         col.addView(button("Android settings", v -> open(new Intent(Settings.ACTION_SETTINGS))), buttonParams());
         col.addView(button("Accessibility (eTVnet helper)",
                 v -> open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))), buttonParams());
+        // Last, below Back, so nobody switches the home screen off by accident
         col.addView(button("Back", v -> finish()), buttonParams());
+        col.addView(homeButton, buttonParams());
 
         ScrollView scroll = new ScrollView(this); // more buttons than fit on one TV screen
         scroll.setBackgroundColor(MainActivity.PAGE_BG);
