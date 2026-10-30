@@ -329,11 +329,17 @@ public class AutoTuneService extends AccessibilityService {
         Rect skip = bannerRect(picture);
         reader.process(InputImage.fromBitmap(picture, 0))
               .addOnSuccessListener(text -> {
+                  // Word by word: a title half-hidden behind our banner ("Knicks vs. 76e") still counts
                   StringBuilder words = new StringBuilder();
                   for (Text.TextBlock block : text.getTextBlocks()) {
-                      Rect box = block.getBoundingBox();
-                      if (box != null && skip != null && Rect.intersects(box, skip)) continue; // our own banner
-                      words.append(block.getText()).append('\n');
+                      for (Text.Line line : block.getLines()) {
+                          for (Text.Element word : line.getElements()) {
+                              Rect box = word.getBoundingBox();
+                              if (box != null && skip != null && Rect.intersects(box, skip)) continue; // our banner
+                              words.append(word.getText()).append(' ');
+                          }
+                          words.append('\n');
+                      }
                   }
                   readerWorks = true;
                   onScreenWords(words.toString().toLowerCase(Locale.ROOT).replace('’', '\''));
