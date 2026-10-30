@@ -18,6 +18,7 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 /** Max's settings screen (behind the small gear): updates and Android settings. In English on purpose. */
@@ -56,13 +57,16 @@ public class SettingsActivity extends Activity {
         col.addView(updateButton, buttonParams());
         col.addView(button("Photo album link", v -> editAlbumLink()), buttonParams());
         col.addView(button("Test game banner (opens Peacock)", v -> testGuide()), buttonParams());
-        col.addView(button("Test DAZN Knicks (plays a replay if no game)", v -> testDazn()), buttonParams());
+        col.addView(button("Test DAZN Knicks (replay)", v -> testDazn()), buttonParams());
         col.addView(button("Android settings", v -> open(new Intent(Settings.ACTION_SETTINGS))), buttonParams());
         col.addView(button("Accessibility (eTVnet helper)",
                 v -> open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))), buttonParams());
         col.addView(button("Back", v -> finish()), buttonParams());
 
-        setContentView(col);
+        ScrollView scroll = new ScrollView(this); // more buttons than fit on one TV screen
+        scroll.setBackgroundColor(MainActivity.PAGE_BG);
+        scroll.addView(col);
+        setContentView(scroll);
         updateButton.requestFocus();
         check();
     }

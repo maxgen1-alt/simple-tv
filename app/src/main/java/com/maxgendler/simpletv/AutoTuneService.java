@@ -33,9 +33,7 @@ import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -398,7 +396,6 @@ public class AutoTuneService extends AccessibilityService {
     private static volatile long daznUntil;
     private boolean daznGameOpened;
     private int daznRailClicks;
-    private final Set<String> playOptionsBefore = new HashSet<>();
     private final Runnable daznStep = this::daznStep;
 
     /**
@@ -413,7 +410,6 @@ public class AutoTuneService extends AccessibilityService {
         if (s != null) s.handler.post(() -> {
             s.daznGameOpened = false;
             s.daznRailClicks = 0;
-            s.playOptionsBefore.clear();
             s.handler.removeCallbacks(s.daznStep);
             s.handler.postDelayed(s.daznStep, 3000); // let DAZN open first
         });
@@ -431,7 +427,7 @@ public class AutoTuneService extends AccessibilityService {
             List<AccessibilityNodeInfo> nodes = new ArrayList<>();
             flatten(root, nodes);
             if (daznGameOpened) {
-                AccessibilityNodeInfo play = newPlayOption(nodes);
+                AccessibilityNodeInfo play = teamPlayOption(nodes, team);
                 if (play != null) {
                     Log.i(TAG, "DAZN: pressing " + play.getText());
                     press(play);
@@ -441,11 +437,6 @@ public class AutoTuneService extends AccessibilityService {
             } else {
                 AccessibilityNodeInfo game = teamGame(nodes, team);
                 if (game != null) {
-                    // Remember the play buttons already showing (the page's big "Watch now" is for
-                    // another game), so only the ones that appear for his game get pressed.
-                    for (AccessibilityNodeInfo n : nodes) {
-                        if (isPlayOption(n)) playOptionsBefore.add(key(n));
-                    }
                     Log.i(TAG, "DAZN: opening " + game.getText());
                     press(game);
                     daznGameOpened = true;
@@ -479,7 +470,8 @@ public class AutoTuneService extends AccessibilityService {
 
     /**
      * The team's game button: under "Live and Coming Up" first (preferring the MSG broadcast, since
-     * the YES one may be locked), else a replay if allowed.
+     * the YES one may be locked). The Settings test uses a finished game instead (replayOk), since
+     * an upcoming game has nothing to play yet.
      */
     private static AccessibilityNodeInfo teamGame(List<AccessibilityNodeInfo> nodes, String team) {
         List<AccessibilityNodeInfo> live = new ArrayList<>(), other = new ArrayList<>();
@@ -492,8 +484,9 @@ public class AutoTuneService extends AccessibilityService {
             if (!n.isClickable() || !text.contains(team) || !text.contains(" @ ")) continue;
             (inLive ? live : other).add(n);
         }
-        AccessibilityNodeInfo pick = bestBroadcast(live);
-        return pick != null || !daznReplayOk ? pick : bestBroadcast(other);
+        if (!daznReplayOk) return bestBroadcast(live);
+        AccessibilityNodeInfo replay = bestBroadcast(other);
+        return replay != null ? replay : bestBroadcast(live);
     }
 
     private static AccessibilityNodeInfo bestBroadcast(List<AccessibilityNodeInfo> games) {
@@ -502,25 +495,41 @@ public class AutoTuneService extends AccessibilityService {
         return games.isEmpty() ? null : games.get(0);
     }
 
-    /** A play button that wasn't there before his game was opened; "live" ones first. */
-    private AccessibilityNodeInfo newPlayOption(List<AccessibilityNodeInfo> nodes) {
+    /**
+     * A play button for his game, "live" ones first. The page's big "Watch now" belongs to some other
+     * game, so a button only counts if the nearest game title around it ("Knicks @ Bulls") is his team's.
+     */
+    private static AccessibilityNodeInfo teamPlayOption(List<AccessibilityNodeInfo> nodes, String team) {
         AccessibilityNodeInfo first = null;
         for (AccessibilityNodeInfo n : nodes) {
-            if (!isPlayOption(n) || playOptionsBefore.contains(key(n))) continue;
+            if (!isPlayOption(n)) continue;
+            String title = nearestGameTitle(n);
+            if (title == null || !title.contains(team)) continue;
             if (lower(n.getText()).contains("live")) return n;
             if (first == null) first = n;
         }
         return first;
     }
 
-    private static boolean isPlayOption(AccessibilityNodeInfo n) {
-        return n.isClickable() && PLAY_OPTION.matcher(lower(n.getText())).find();
+    /** The first "A @ B" title in the small group of things around this button, or null. */
+    private static String nearestGameTitle(AccessibilityNodeInfo button) {
+        AccessibilityNodeInfo group = button;
+        for (int up = 0; up < 5; up++) {
+            group = group.getParent();
+            if (group == null) return null;
+            List<AccessibilityNodeInfo> inside = new ArrayList<>();
+            flatten(group, inside);
+            if (inside.size() > 80) return null; // that's the whole page, not one game's box
+            for (AccessibilityNodeInfo n : inside) {
+                String t = lower(n.getText());
+                if (t.contains(" @ ")) return t;
+            }
+        }
+        return null;
     }
 
-    private static String key(AccessibilityNodeInfo n) {
-        Rect r = new Rect();
-        n.getBoundsInScreen(r);
-        return lower(n.getText()) + r.toShortString();
+    private static boolean isPlayOption(AccessibilityNodeInfo n) {
+        return n.isClickable() && PLAY_OPTION.matcher(lower(n.getText())).find();
     }
 
     private static boolean has(List<AccessibilityNodeInfo> nodes, String words) {
