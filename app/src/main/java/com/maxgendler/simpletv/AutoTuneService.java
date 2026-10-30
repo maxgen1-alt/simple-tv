@@ -168,6 +168,28 @@ public class AutoTuneService extends AccessibilityService {
     @Override
     protected void onServiceConnected() {
         instance = this;
+        backHomeAfterUpdate();
+    }
+
+    /**
+     * While an update installs, Android closes Simple TV, and with no home screen for a moment the TV
+     * falls back to the last app (e.g. eTVnet on RTVI). Android's own retry fails mid-install. The helper
+     * restarts right after every update, so if we were just updated, it sends the TV back home.
+     */
+    private void backHomeAfterUpdate() {
+        try {
+            long updated = getPackageManager().getPackageInfo(getPackageName(), 0).lastUpdateTime;
+            if (System.currentTimeMillis() - updated > 60_000) return; // a normal start (boot, switched on)
+            handler.postDelayed(() -> {
+                try {
+                    startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (Exception e) {
+                    Log.w(TAG, "couldn't go home after update", e);
+                }
+            }, 1500);
+        } catch (Exception ignored) {
+        }
     }
 
     @Override
