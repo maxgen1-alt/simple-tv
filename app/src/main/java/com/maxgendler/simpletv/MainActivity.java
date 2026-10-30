@@ -399,10 +399,11 @@ public class MainActivity extends Activity {
             Schedule.Game g = current.game;
             switch (current.phase) {
                 case LIVE:
-                    status.setText("ИГРА ИДЁТ\nНажмите ОК");
+                    // ◉ = the round middle button: the ONN remote has no "OK" written on it
+                    status.setText("ИГРА ИДЁТ\nНажмите ◉");
                     break;
                 case SOON:
-                    status.setText("Игра в " + time(g.tipMs) + "\nНажмите ОК");
+                    status.setText("Игра в " + time(g.tipMs) + "\nНажмите ◉");
                     break;
                 case LATER:
                     status.setText(dayAndTime(g.tipMs));
@@ -515,12 +516,12 @@ public class MainActivity extends Activity {
 
     /** What the banner tells Grandpa to press in each app (the helper picks the step from the screen). */
     static AutoTuneService.Guide guideSteps(Config.Target app, Config.Team team) {
-        String find = "Найдите игру «" + team.ruName + "» и нажмите ОК";
+        String find = "Найдите игру «" + team.ruName + "» и нажмите круглую кнопку ◉";
         String watch = "Нажмите «Watch» (Смотреть) — игра начнётся";
         String profile = null;
         if (app == Config.PEACOCK) profile = Config.PEACOCK_PROFILE;
         if (app == Config.PRIME || app == Config.PARAMOUNT) profile = Config.PRIME_PROFILE; // Paramount+ is inside Prime
-        String pick = profile == null ? null : "Выберите «" + profile + "» и нажмите ОК";
+        String pick = profile == null ? null : "Выберите «" + profile + "» и нажмите круглую кнопку ◉";
         // team.key ("knicks" / "chelsea") is how the team's name reads on the apps' English screens
         return new AutoTuneService.Guide(pick, find, watch, team.key, team.ruName,
                 profile == null ? null : profile.toLowerCase(Locale.ROOT));
