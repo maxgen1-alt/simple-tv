@@ -568,6 +568,7 @@ public class AutoTuneService extends AccessibilityService {
         List<Pilot.Line> out = new ArrayList<>();
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null) return out;
+        root.refresh(); // DAZN changes under us; don't trust a remembered copy
         float scale = 1080f / getResources().getDisplayMetrics().heightPixels;
         collect(root, out, scale, 0);
         return out;
