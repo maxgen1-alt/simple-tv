@@ -41,7 +41,8 @@ final class DaznPilot extends Pilot {
         // 0. DAZN shows "Getting things ready for you..." for ~15 s; presses then are lost or worse
         boolean loaded = false;
         for (Line l : lines) {
-            if (l.text.equals("watch now") || l.text.startsWith("join live") || isTile(l)) loaded = true;
+            if (l.text.equals("watch now") || l.text.startsWith("join live") || isBack(l)
+                    || isTile(l)) loaded = true;
         }
         if (!loaded) {
             if (waits++ >= MAX_WAITS) return giveUp("DAZN never loaded");
@@ -62,6 +63,16 @@ final class DaznPilot extends Pilot {
             pressedWatch = true;
             return say(Key.OK, "join live");
         }
+        // His game's page with only "Back" on it: it hasn't started yet. Stop; the banner shows the steps.
+        boolean back = false, tiles = false;
+        for (Line l : lines) {
+            if (isBack(l)) back = true;
+            if (isTile(l)) tiles = true;
+        }
+        if (back && !tiles && title != null && title.text.contains(team)) {
+            return giveUp("his game's page, not started yet");
+        }
+
         // Just opened a game: give its "Join live" screen a few reads to appear before moving on
         if (opening > 0) {
             opening--;
@@ -128,8 +139,16 @@ final class DaznPilot extends Pilot {
         return say(focused.l < target.l ? Key.RIGHT : Key.LEFT, "towards " + target.text);
     }
 
+    /** A game tile in a row (not the whole page, which also carries the title, nor a logo). */
     private static boolean isTile(Line l) {
-        return l.r - l.l >= MIN_TILE_W && l.b - l.t >= MIN_TILE_H;
+        int w = l.r - l.l, h = l.b - l.t;
+        return w >= MIN_TILE_W && h >= MIN_TILE_H && w < 1000 && !l.text.contains("logo");
+    }
+
+    /** DAZN's Back button reads " Back" (an icon character in front). */
+    private static boolean isBack(Line l) {
+        String t = l.text.trim();
+        return t.length() <= 8 && t.endsWith("back");
     }
 
     /** The tile row starts just under its heading. */
