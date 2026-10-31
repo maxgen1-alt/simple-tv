@@ -21,7 +21,7 @@ final class DaznPilot extends Pilot {
     private final String team;
     private static final int MAX_WAITS = 25; // screen reads, ~2-3 s apart
     private static final int OPENING_READS = 5;
-    private int waits, downs, blindDowns, sideways, backs, opening;
+    private int waits, downs, blindDowns, sideways, backs, opening, lostReads;
 
     DaznPilot(String teamWord) {
         team = teamWord;
@@ -100,9 +100,15 @@ final class DaznPilot extends Pilot {
                     && (target == null || l.l < target.l)) target = l; // leftmost: live games come first
         }
         if (focused == null) {
+            // Still on the big banner's "Watch now": go down into the rows. Otherwise the row is
+            // probably mid-slide (DAZN scrolls the row after Right); look again before moving.
+            boolean onBanner = watchNow != null && lit(watchNow, px);
+            if (!onBanner && lostReads++ < 2) return say(Key.NONE, "highlight moving");
+            lostReads = 0;
             if (blindDowns++ >= MAX_DOWNS) return giveUp("highlight not found");
             return say(Key.DOWN, "into the rows");
         }
+        lostReads = 0;
         if (target == null) {
             if (!inRow(focused, heading)) {
                 if (focused.t < heading.t) return say(Key.DOWN, "towards the live row");
