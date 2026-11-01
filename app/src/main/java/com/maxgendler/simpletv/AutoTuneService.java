@@ -618,11 +618,16 @@ public class AutoTuneService extends AccessibilityService {
     }
 
     /**
-     * Watches (never blocks) remote presses while the banner is up. Each press makes the helper look
-     * at the screen again soon; if screen reading isn't working, OK / Back move the steps instead.
+     * Swallows the remote buttons blocked in settings (BlockedKeys), in every app.
+     * Otherwise watches (never blocks) remote presses while the banner is up. Each press makes the helper
+     * look at the screen again soon; if screen reading isn't working, OK / Back move the steps instead.
      */
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
+        if (BlockedKeys.filter(this, event)) {
+            Log.i(TAG, "blocked remote button " + event.getKeyCode() + " / scan " + event.getScanCode());
+            return true; // nobody sees this press
+        }
         if (banner != null && event.getAction() == KeyEvent.ACTION_UP) {
             int k = event.getKeyCode();
             if (k == KeyEvent.KEYCODE_HOME) {

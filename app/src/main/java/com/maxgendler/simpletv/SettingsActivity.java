@@ -31,7 +31,7 @@ public class SettingsActivity extends Activity {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private TextView helper, status;
-    private TextView updateButton, homeButton;
+    private TextView updateButton, homeButton, blockButton;
     private Updater.Latest latest;
 
     @Override
@@ -65,6 +65,13 @@ public class SettingsActivity extends Activity {
         col.addView(button("Test Peacock Chelsea game (helper drives)", v -> testGuide()), buttonParams());
         col.addView(button("Test DAZN game (helper drives)", v -> testDazn()), buttonParams());
         col.addView(button("Test Prime game (today's listed game)", v -> testPrime()), buttonParams());
+        blockButton = button("", v -> learnBlockedButton());
+        col.addView(blockButton, buttonParams());
+        col.addView(button("Unblock all remote buttons", v -> {
+            BlockedKeys.clear(this);
+            showBlockedButtons();
+            status.setText("All remote buttons work again.");
+        }), buttonParams());
         col.addView(button("Android settings", v -> open(new Intent(Settings.ACTION_SETTINGS))), buttonParams());
         col.addView(button("Accessibility (eTVnet helper)",
                 v -> open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))), buttonParams());
@@ -89,6 +96,49 @@ public class SettingsActivity extends Activity {
                 + "\nAutomatic updates: " + (Updater.installedBySelf(this) && Updater.canInstall(this)
                 ? "on" : "off until you press Install update once"));
         showHomeScreenState();
+        showBlockedButtons();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        BlockedKeys.stopLearning();
+    }
+
+    private void showBlockedButtons() {
+        int n = BlockedKeys.all(this).size();
+        blockButton.setText("Block a remote button" + (n == 0 ? "" : " (" + n + " blocked)"));
+    }
+
+    /**
+     * Press this, then press a remote button (Netflix, YouTube...): from then on that button does
+     * nothing, in every app. Arrows, OK, Back and Home can't be blocked. Needs the eTVnet helper on,
+     * because that's what sees the remote's presses.
+     */
+    private void learnBlockedButton() {
+        if (!AutoTuneService.isEnabled(this)) {
+            status.setText("Switch on the eTVnet helper first (Accessibility). It's what blocks the buttons.");
+            return;
+        }
+        StringBuilder list = new StringBuilder();
+        for (String id : BlockedKeys.all(this)) {
+            list.append(list.length() == 0 ? "\n\nBlocked now: " : ", ").append(BlockedKeys.name(id));
+        }
+        AlertDialog waiting = new AlertDialog.Builder(this)
+                .setTitle("Press the remote button to block")
+                .setMessage("e.g. Netflix or YouTube. It will do nothing from now on, in every app."
+                        + " (Arrows, OK, Back and Home can't be blocked.)" + list)
+                .setNegativeButton("Cancel", null)
+                .create();
+        waiting.setOnDismissListener(d -> BlockedKeys.stopLearning());
+        BlockedKeys.startLearning(name -> {
+            waiting.setOnDismissListener(null);
+            waiting.dismiss();
+            status.setText(name == null ? "Android can't tell that button apart, so it can't be blocked."
+                                        : "Blocked: " + name + ". Press Block again for the next one.");
+            showBlockedButtons();
+        });
+        waiting.show();
     }
 
     /**
