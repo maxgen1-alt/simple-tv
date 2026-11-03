@@ -29,7 +29,7 @@ Other details:
 - Back button does nothing on the home screen, so they can't get lost. Home button always comes back here (once you've turned on the home-screen switch in Step 3).
 - If an app won't open, a red banner says "Не получается открыть. Позвоните Максу." (Can't open it. Call Max.)
 - **Secret admin door for you:** press **UP 7 times** in a row to open Android Settings.
-- **Dead app buttons:** in Simple TV settings (home screen: Up 5 times, then Left 5 times), press **Block a remote button**, then press the Netflix / YouTube / etc. button on the remote. From then on that button does nothing, in every app. Repeat for each one. **Unblock all remote buttons** undoes it. Arrows, OK, Back and Home can never be blocked. Needs the eTVnet helper (Accessibility) switched on, since that's what sees the presses.
+- **Dead app buttons:** in Simple TV settings (home screen: Up 5 times, then Left 5 times), press **Block a remote button**, then press the Netflix / YouTube / etc. button on the remote. From then on that button does nothing, in every app. Repeat for each one. **Unblock all remote buttons** undoes it. Arrows, OK, Back, Home, Volume and Power can never be blocked. Needs the eTVnet helper (Accessibility) switched on, since that's what sees the presses.
 
 ---
 

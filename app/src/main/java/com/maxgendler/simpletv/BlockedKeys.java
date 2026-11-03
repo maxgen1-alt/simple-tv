@@ -60,7 +60,11 @@ final class BlockedKeys {
         learning = null;
     }
 
-    /** Arrows, OK, Back and Home: blocking these would lock everyone out, so they're never blocked. */
+    /**
+     * Arrows, OK, Back and Home: blocking these would lock everyone out. Volume, Mute and Power: an
+     * accidental press while "Block a remote button" is waiting would silently kill the volume in
+     * every app. None of these are ever blocked, even if saved as blocked by an older version.
+     */
     static boolean isProtected(int keyCode) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_UP:
@@ -71,6 +75,12 @@ final class BlockedKeys {
             case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_HOME:
+            case KeyEvent.KEYCODE_VOLUME_UP:
+            case KeyEvent.KEYCODE_VOLUME_DOWN:
+            case KeyEvent.KEYCODE_VOLUME_MUTE:
+            case KeyEvent.KEYCODE_MUTE:
+            case KeyEvent.KEYCODE_POWER:
+            case KeyEvent.KEYCODE_TV_POWER:
                 return true;
             default:
                 return false;

@@ -112,7 +112,7 @@ public class SettingsActivity extends Activity {
 
     /**
      * Press this, then press a remote button (Netflix, YouTube...): from then on that button does
-     * nothing, in every app. Arrows, OK, Back and Home can't be blocked. Needs the eTVnet helper on,
+     * nothing, in every app. Arrows, OK, Back, Home, Volume and Power can't be blocked. Needs the eTVnet helper on,
      * because that's what sees the remote's presses.
      */
     private void learnBlockedButton() {
@@ -127,7 +127,7 @@ public class SettingsActivity extends Activity {
         AlertDialog waiting = new AlertDialog.Builder(this)
                 .setTitle("Press the remote button to block")
                 .setMessage("e.g. Netflix or YouTube. It will do nothing from now on, in every app."
-                        + " (Arrows, OK, Back and Home can't be blocked.)" + list)
+                        + " (Arrows, OK, Back, Home, Volume and Power can't be blocked.)" + list)
                 .setNegativeButton("Cancel", null)
                 .create();
         waiting.setOnDismissListener(d -> BlockedKeys.stopLearning());
