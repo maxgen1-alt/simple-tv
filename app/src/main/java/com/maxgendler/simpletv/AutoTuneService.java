@@ -625,7 +625,9 @@ public class AutoTuneService extends AccessibilityService {
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
         if (event.getKeyCode() == KeyEvent.KEYCODE_HOME && event.getAction() == KeyEvent.ACTION_UP
-                && !event.isCanceled()) {
+                && !event.isCanceled()
+                && event.getEventTime() - event.getDownTime() < android.view.ViewConfiguration.getLongPressTimeout()) {
+            // a quick press only: holding Home opens Google TV's own menu, leave that alone
             handler.post(this::openSimpleTvForHome);
         }
         if (BlockedKeys.filter(this, event)) {
