@@ -624,6 +624,10 @@ public class AutoTuneService extends AccessibilityService {
      */
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_HOME && event.getAction() == KeyEvent.ACTION_UP
+                && !event.isCanceled()) {
+            handler.post(this::openSimpleTvForHome);
+        }
         if (BlockedKeys.filter(this, event)) {
             Log.i(TAG, "blocked remote button " + event.getKeyCode() + " / scan " + event.getScanCode());
             return true; // nobody sees this press
@@ -651,6 +655,32 @@ public class AutoTuneService extends AccessibilityService {
             lastRead = 0; // look again right away
         }
         return false; // the key still goes to the app as normal
+    }
+
+    /**
+     * Home pressed: open Simple TV ourselves, in case Android's own Home does nothing (seen on their
+     * stick: Home stopped working). Only when Simple TV is meant to be the home screen, i.e. no other
+     * real home screen (Google TV's) would answer Home. Harmless when Android's Home works too:
+     * MainActivity is singleTask, so it just comes to the front once.
+     */
+    private void openSimpleTvForHome() {
+        try {
+            Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            android.content.pm.ResolveInfo r = getPackageManager().resolveActivity(home, 0);
+            if (r != null && r.activityInfo != null) {
+                String pkg = r.activityInfo.packageName;
+                boolean other = !pkg.equals(getPackageName()) && !"android".equals(pkg)
+                        && !r.activityInfo.name.endsWith("FallbackHome")
+                        && !r.activityInfo.name.endsWith("ResolverActivity");
+                if (other) return; // e.g. Max's own Chromecast: Google TV's home screen handles Home
+            }
+            Log.i(TAG, "Home pressed: opening Simple TV (home resolves to "
+                    + (r == null || r.activityInfo == null ? "nothing" : r.activityInfo.name) + ")");
+            startActivity(new Intent(this, MainActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+        } catch (Exception e) {
+            Log.w(TAG, "couldn't open Simple TV for Home", e);
+        }
     }
 
     private void step() {
