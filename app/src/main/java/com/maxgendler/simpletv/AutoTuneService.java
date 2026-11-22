@@ -633,6 +633,7 @@ public class AutoTuneService extends AccessibilityService {
             }
             return true;
         }
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK && backGoesHome(event)) return true;
         if (event.getKeyCode() == KeyEvent.KEYCODE_HOME && event.getAction() == KeyEvent.ACTION_UP
                 && !event.isCanceled()
                 && event.getEventTime() - event.getDownTime() < android.view.ViewConfiguration.getLongPressTimeout()) {
@@ -691,6 +692,39 @@ public class AutoTuneService extends AccessibilityService {
         } catch (Exception e) {
             Log.w(TAG, "couldn't open Simple TV for Home", e);
         }
+    }
+
+    private boolean backToSimpleTv; // swallowing a Back press, down to up
+
+    /**
+     * Back on a channel (YouTube TV or eTVnet) goes straight to Simple TV: Grandma and Grandpa can't
+     * find Home, and Back is the button they know. Only on their TVs (home-screen switch on). Back
+     * inside Prime / Peacock / DAZN / ESPN still works as normal, since those need it for their menus.
+     * True = swallow this press.
+     */
+    private boolean backGoesHome(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (event.getRepeatCount() > 0) return backToSimpleTv;
+            backToSimpleTv = false;
+            if (!isSimpleTvTheHomeScreen()) return false;
+            String pkg = null;
+            try {
+                AccessibilityNodeInfo root = getRootInActiveWindow();
+                if (root != null) pkg = String.valueOf(root.getPackageName());
+            } catch (Exception ignored) {
+            }
+            if (!Config.CABLE.packages[0].equals(pkg) && !Config.ETVNET.packages[0].equals(pkg)) return false;
+            Log.i(TAG, "Back on a channel (" + pkg + "): going to Simple TV");
+            backToSimpleTv = true;
+            pendingName = null; // stop clicking through eTVnet
+            return true;
+        }
+        if (event.getAction() == KeyEvent.ACTION_UP && backToSimpleTv) {
+            backToSimpleTv = false;
+            handler.post(this::openSimpleTv);
+            return true;
+        }
+        return false;
     }
 
     private void openSimpleTv() {
