@@ -624,6 +624,15 @@ public class AutoTuneService extends AccessibilityService {
      */
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_HOME && isSimpleTvTheHomeScreen()) {
+            // Their TVs: the helper answers Home itself and Android never sees it. On the TCL TV
+            // Android's own Home did nothing (TCL's system grabbed it), so don't rely on it at all.
+            if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
+                if (banner != null) hideGuide();
+                handler.post(this::openSimpleTv);
+            }
+            return true;
+        }
         if (event.getKeyCode() == KeyEvent.KEYCODE_HOME && event.getAction() == KeyEvent.ACTION_UP
                 && !event.isCanceled()
                 && event.getEventTime() - event.getDownTime() < android.view.ViewConfiguration.getLongPressTimeout()) {
@@ -678,10 +687,32 @@ public class AutoTuneService extends AccessibilityService {
             }
             Log.i(TAG, "Home pressed: opening Simple TV (home resolves to "
                     + (r == null || r.activityInfo == null ? "nothing" : r.activityInfo.name) + ")");
+            openSimpleTv();
+        } catch (Exception e) {
+            Log.w(TAG, "couldn't open Simple TV for Home", e);
+        }
+    }
+
+    private void openSimpleTv() {
+        try {
             startActivity(new Intent(this, MainActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
         } catch (Exception e) {
             Log.w(TAG, "couldn't open Simple TV for Home", e);
+        }
+    }
+
+    /**
+     * True on their TVs: Simple TV's home-screen switch is on (settings, Up x5 Left x5). Off on Max's
+     * own Chromecast, where Google TV's Home must keep working as normal.
+     */
+    private boolean isSimpleTvTheHomeScreen() {
+        try {
+            return getPackageManager().getComponentEnabledSetting(
+                    new android.content.ComponentName(this, getPackageName() + ".HomeScreen"))
+                    == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
+        } catch (Exception e) {
+            return false;
         }
     }
 
