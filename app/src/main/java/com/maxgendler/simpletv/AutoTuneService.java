@@ -778,6 +778,12 @@ public class AutoTuneService extends AccessibilityService {
                 if (sameName(n.getText(), target)) found.add(n);
             }
         }
+        if (found.isEmpty()) {
+            // eTVnet renamed its screen parts in an update: look for the channel's name anywhere
+            for (AccessibilityNodeInfo n : root.findAccessibilityNodeInfosByText(target)) {
+                if (sameName(n.getText(), target) || sameName(n.getContentDescription(), target)) found.add(n);
+            }
+        }
         for (AccessibilityNodeInfo n : found) {
             AccessibilityNodeInfo card = clickableParent(n);
             if (card == null) continue;
@@ -822,6 +828,15 @@ public class AutoTuneService extends AccessibilityService {
                 if (tab != null) tab.performAction(AccessibilityNodeInfo.ACTION_CLICK);
                 return;
             }
+        }
+        // eTVnet renamed its screen parts in an update: find the "Прямой эфир" tab by its words
+        for (AccessibilityNodeInfo n : root.findAccessibilityNodeInfosByText(LIVE_TAB)) {
+            if (!sameName(n.getText(), LIVE_TAB) && !sameName(n.getContentDescription(), LIVE_TAB)) continue;
+            AccessibilityNodeInfo tab = clickableParent(n);
+            if (tab == null) continue;
+            Log.i(TAG, "opening Live tab (found by its words)");
+            tab.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            return;
         }
     }
 
