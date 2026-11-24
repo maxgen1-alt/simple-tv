@@ -63,10 +63,12 @@ public class AutoTuneService extends AccessibilityService {
     private final Runnable step = this::step;
 
     private static volatile String pendingRow = "Центральные";
+    private static volatile int pendingNumber; // the channel's number on eTVnet's Live screen, 0 = unknown
 
     /** Called right before we open eTVnet. row = the heading of the Live-screen row it's in. */
-    static void request(String channelName, String row) {
+    static void request(String channelName, String row, int number) {
         pendingRow = row;
+        pendingNumber = number;
         pendingName = channelName;
         pendingUntil = System.currentTimeMillis() + GIVE_UP_MS;
         scrolls = 0;
@@ -760,8 +762,23 @@ public class AutoTuneService extends AccessibilityService {
 
         // 1. The channel's card is on screen. eTVnet plays whichever card is highlighted,
         //    so highlight it first (like moving the remote onto it), then press it.
+        //    Look for it by number first (names change: "РТР-Планета" vs "РТР Планета"), then by name.
+        List<AccessibilityNodeInfo> found = new ArrayList<>();
+        int number = pendingNumber;
+        if (number > 0) {
+            for (AccessibilityNodeInfo n : byId(root, pkg, "channel_nr")) {
+                if (digits(n.getText()) == number) found.add(n);
+            }
+        }
         for (AccessibilityNodeInfo n : byId(root, pkg, "card_text_view")) {
-            if (!matches(n.getText(), target)) continue;
+            if (matches(n.getText(), target)) found.add(n);
+        }
+        if (found.isEmpty()) {
+            for (AccessibilityNodeInfo n : byId(root, pkg, "card_text_view")) {
+                if (sameName(n.getText(), target)) found.add(n);
+            }
+        }
+        for (AccessibilityNodeInfo n : found) {
             AccessibilityNodeInfo card = clickableParent(n);
             if (card == null) continue;
             if (!card.isFocused() && focusTries++ < 3) {
@@ -818,6 +835,26 @@ public class AutoTuneService extends AccessibilityService {
 
     private static List<AccessibilityNodeInfo> byId(AccessibilityNodeInfo root, String pkg, String id) {
         return root.findAccessibilityNodeInfosByViewId(pkg + ":id/" + id);
+    }
+
+    /** The number in "6" or "№ 6", or -1. */
+    private static int digits(CharSequence text) {
+        if (text == null) return -1;
+        String d = text.toString().replaceAll("[^0-9]", "");
+        if (d.isEmpty() || d.length() > 6) return -1;
+        return Integer.parseInt(d);
+    }
+
+    /** Same channel name, ignoring spaces, dashes, punctuation, ё/е and a trailing "HD". */
+    private static boolean sameName(CharSequence text, String wanted) {
+        if (text == null) return false;
+        String a = loose(text.toString()), b = loose(wanted);
+        return !a.isEmpty() && a.equals(b);
+    }
+
+    private static String loose(String s) {
+        s = s.toLowerCase(Locale.ROOT).replace('ё', 'е').replaceAll("[^\\p{L}\\p{N}]", "");
+        return s.endsWith("hd") ? s.substring(0, s.length() - 2) : s;
     }
 
     private static boolean matches(CharSequence text, String wanted) {

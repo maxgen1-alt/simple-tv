@@ -81,6 +81,7 @@ final class Config {
         final String name;    // eTVnet: the channel's exact name on its Live screen (null = use link)
         String logoUrl;       // the tile's cover; ruTop/ruBig show until it has downloaded
         String row = "Центральные"; // eTVnet: which row of its Live screen the channel is in
+        int number;           // eTVnet: the channel's number on its Live screen (0 = unknown); found by this first
 
         Channel(String ruTop, String ruBig, Target app, String link, String name) {
             this.ruTop = ruTop;
@@ -98,6 +99,12 @@ final class Config {
         /** An eTVnet channel, found by its name on eTVnet's Live screen. */
         static Channel etvnet(String ruBig, String name) {
             return new Channel("", ruBig, ETVNET, "", name);
+        }
+
+        /** eTVnet: the channel's number on its Live screen. Found by number first, so a small change in its name doesn't break the button. */
+        Channel nr(int n) {
+            number = n;
+            return this;
         }
 
         /** eTVnet: the row heading on its Live screen, e.g. "Развлекательные". */
@@ -147,14 +154,14 @@ final class Config {
             // (ABC has no button anymore, but ABC_LINK still sends Knicks/Chelsea games on ABC there)
             Channel.cable("КАНАЛ", "4", NBC_LINK).logo("NBC logo 2022.svg").onTop(),
             // Label is what Grandpa calls it ("Sport Program"); the tile still shows the channel's logo
-            Channel.etvnet("СПОРТИВНАЯ ПРОГРАММА", "Матч! Арена HD").inRow("Спортивные")
+            Channel.etvnet("СПОРТИВНАЯ ПРОГРАММА", "Матч! Арена HD").inRow("Спортивные").nr(305)
                    .ruWikiLogo("Матч! Арена.png").onTop(),                               // channel 305
             // Names exactly as eTVnet shows them in its "Центральные" row
-            Channel.etvnet("RTVI", "RTVI US").logo("RTVI Logo magenta fill 2021.png"),     // channel 8
-            Channel.etvnet("НТВ", "НТВ America").logo("NTV logo 2003.svg"),               // channel 13
-            Channel.etvnet("РТР", "РТР-Планета").logo("RTR-Planeta Logo.svg"),            // channel 6
-            Channel.etvnet("ПЕРВЫЙ", "Первый HD").logo("Логотип «Первого канала».svg"),   // channel 2
-            Channel.etvnet("НОСТАЛЬГИЯ", "Ностальгия").inRow("Развлекательные")
+            Channel.etvnet("RTVI", "RTVI US").nr(8).logo("RTVI Logo magenta fill 2021.png"),     // channel 8
+            Channel.etvnet("НТВ", "НТВ America").nr(13).logo("NTV logo 2003.svg"),               // channel 13
+            Channel.etvnet("РТР", "РТР-Планета").nr(6).logo("RTR-Planeta Logo.svg"),            // channel 6
+            Channel.etvnet("ПЕРВЫЙ", "Первый HD").nr(2).logo("Логотип «Первого канала».svg"),   // channel 2
+            Channel.etvnet("НОСТАЛЬГИЯ", "Ностальгия").inRow("Развлекательные").nr(534)
                    .logo("Nostalgiya TV Channel.png"),                                    // channel 534
     };
 
